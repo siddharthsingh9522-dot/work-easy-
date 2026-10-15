@@ -1,6 +1,7 @@
 services:
   - type: web
     name: om-suite
+    rootDir: om_suite
     runtime: docker
     plan: free            # GST Query (Chrome) needs more RAM: use "starter" once Phase 3 is live
     healthCheckPath: /healthz
