@@ -1,0 +1,4 @@
+.pbar{height:12px;background:var(--surface-2);border-radius:8px;overflow:hidden;margin:.4rem 0}.pbar i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.lookup-grid{display:grid;gap:.8rem 1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.result-card{margin-top:1rem}.err{color:var(--danger);font-weight:600}
+.kv{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:.35rem 1rem;font-size:.92rem}.kv dt{color:var(--ink-faint);font-weight:600}.kv dd{margin:0;word-break:break-word}

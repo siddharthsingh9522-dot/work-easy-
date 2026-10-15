@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}OM Automation · {{ app_name }}{% endblock %}
+{% block page_title %}OM Automation{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('modules/om/om.css') }}">{% endblock %}
+{% block content %}<main id="app" class="om-app"></main>{% endblock %}
+{% block scripts %}<script id="pages-data" type="application/json">{{ pages | tojson }}</script><script src="{{ asset('modules/om/om.js') }}"></script>{% endblock %}

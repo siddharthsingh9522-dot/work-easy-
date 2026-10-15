@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Validation & Audit · {{ app_name }}{% endblock %}
+{% block page_title %}Validation & Audit{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Validation & Audit</h2><p>Duplicate codes/dockets, missing branches aur DDR resolution checks.</p></div></div>
+{% if not has %}
+  <div class="card empty">Pehle <a href="{{ url_for('dbp.report') }}">Report Builder</a> me report generate karein.</div>
+{% else %}
+  <form method="post" style="margin-bottom:1rem" data-busy="Checks chal rahe hain…"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn" type="submit">🔍 Run all checks</button>
+    <span class="muted small" style="margin-left:.6rem">Report: {{ st.region_name }} · {{ st.last_report_time }}</span></form>
+  {% if issues %}
+    {% for i in issues %}
+      <div class="issue sev-{{ i.severity|lower }}"><div class="issue-h"><span class="pill sev">{{ i.severity }}</span> <b>{{ i.type }}</b></div><pre>{{ i.message }}</pre></div>
+    {% endfor %}
+  {% elif issues is not none %}
+    <div class="flash ok">Koi validation issue nahi mila. ✅</div>
+  {% else %}
+    <div class="card empty">Checks abhi chalaye nahi gaye.</div>
+  {% endif %}
+{% endif %}
+{% endblock %}

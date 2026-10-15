@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}AI Chatbot · {{ app_name }}{% endblock %}
+{% block page_title %}AI Chatbot{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>AI Chatbot</h2><p>Data se seedha sawaal: “801 ki pending?”, “801 ke docket?”, “branch-wise DDR”, “801 ka mail banao”. Numbers hamesha data se aate hain.</p></div>
+  {% if has and history %}<form method="post" action="{{ url_for('dbp.chatbot_clear') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn ghost" type="submit">Clear chat</button></form>{% endif %}</div>
+{% if not has %}
+  <div class="card empty">Pehle <a href="{{ url_for('dbp.report') }}">Report Builder</a> me report generate karein.</div>
+{% else %}
+  <div class="quick">{% for p in ['801 ki pending batao', '801 ke DDR docket batao', 'branch wise DDR pending', '801 ka mail banao'] %}<button type="button" class="btn ghost sm" data-q="{{ p }}">{{ p }}</button>{% endfor %}</div>
+  <div class="card chat" id="chat">
+    {% for role, msg in history %}<div class="msg {{ role }}"><div class="bubble" data-md="{{ msg }}"></div></div>{% endfor %}
+  </div>
+  <form class="chat-in" id="chatForm"><input class="input" id="chatQ" maxlength="500" placeholder="Apna sawal likho…" autocomplete="off" required><button class="btn" type="submit">Send</button></form>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if has %}<script src="{{ asset('js/dbp.js') }}"></script><script>DBPChat.init("{{ url_for('dbp.chatbot_ask') }}");</script>{% endif %}{% endblock %}

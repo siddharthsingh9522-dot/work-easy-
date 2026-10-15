@@ -1,0 +1,14 @@
+{% extends "auth_base.html" %}
+{% block title %}Login{% endblock %}
+{% block body %}
+<h1>Welcome back</h1>
+<p class="sub">Continue karne ke liye login karein.</p>
+<form method="post" action="{{ url_for('auth.login') }}" autocomplete="on">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <label class="field">Email<input type="email" name="email" value="{{ email }}" required autofocus autocomplete="username"></label>
+  <label class="field">Password<input type="password" name="password" required autocomplete="current-password"></label>
+  <button class="btn block" type="submit">Login</button>
+</form>
+<p class="auth-alt">Naya account? <a href="{{ url_for('auth.signup') }}">Signup karein</a><br><span class="small">Signup ke baad admin approval ke baad hi login hoga.</span></p>
+{% endblock %}

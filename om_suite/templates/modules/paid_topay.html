@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Paid / ToPay Suite · {{ app_name }}{% endblock %}
+{% block page_title %}Paid / ToPay Suite{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ asset('modules/paid_topay/ptp.css') }}">{% endblock %}
+{% block content %}{% include "modules/_paid_topay_markup.html" %}{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>window.PTP_CNQ = "{{ asset('modules/paid_topay/cnquery.html') }}";</script>
+<script src="{{ asset('modules/paid_topay/ptp.js') }}"></script>
+<script src="{{ asset('modules/paid_topay/glue.js') }}"></script>
+{% endblock %}

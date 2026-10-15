@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Directory & Masters · {{ app_name }}{% endblock %}
+{% block page_title %}Directory & Masters{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Directory & Master Data</h2><p>Naya directory ya branch-name file aaye to yahin update karein. Galat file hui to purani file safe rehti hai.</p></div></div>
+{% for e in m.errors %}<div class="flash error">{{ e }}</div>{% endfor %}
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-bottom:1.2rem">
+  {% for which, title, hint in [('directory', '1) Directory update', 'Directory (.xlsx / .xls)'), ('branch', '2) Branch name master update', 'Branch master (.xlsx / .xls)')] %}
+  <form class="card" method="post" enctype="multipart/form-data" data-busy="Check karke save ho raha hai…">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="which" value="{{ which }}">
+    <h3 style="margin-bottom:.7rem">{{ title }}</h3>
+    <label class="field">{{ hint }}<input type="file" name="file" accept=".xlsx,.xls" required></label>
+    <button class="btn" type="submit">💾 Save / Replace</button>
+  </form>{% endfor %}
+</div>
+<div class="kpis"><div class="kpi"><div class="kpi-l">Directory rows</div><div class="kpi-v">{{ '{:,}'.format(total) }}</div></div><div class="kpi"><div class="kpi-l">Branch codes</div><div class="kpi-v">{{ '{:,}'.format(bm_total) }}</div></div></div>
+<h3 style="margin:1.4rem 0 .5rem">Current directory</h3>
+<form class="search-row" method="get"><input class="input" type="search" name="q" value="{{ q }}" placeholder="Branch / employee / email search"><input type="hidden" name="bq" value="{{ bq }}"><button class="btn ghost" type="submit">Search</button></form>
+{% if dir_html %}<div class="card" style="padding:0"><div class="table-wrap">{{ dir_html|safe }}</div></div><p class="muted small">{{ found }} row(s) mili.</p>{% else %}<div class="card empty">Directory me kuch nahi mila.</div>{% endif %}
+<h3 style="margin:1.4rem 0 .5rem">Current branch master</h3>
+<form class="search-row" method="get"><input type="hidden" name="q" value="{{ q }}"><input class="input" type="search" name="bq" value="{{ bq }}" placeholder="Code ya naam"><button class="btn ghost" type="submit">Search</button></form>
+{% if bm_html %}<div class="card" style="padding:0"><div class="table-wrap">{{ bm_html|safe }}</div></div>{% endif %}
+{% endblock %}

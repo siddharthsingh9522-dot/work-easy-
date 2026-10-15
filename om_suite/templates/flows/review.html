@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Review template · {{ app_name }}{% endblock %}
+{% block page_title %}Previous Mail — review{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/flows.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Template review</h2><p>Purani mail ke specific values <code>{{ '{{Column Name}}' }}</code> placeholders se badle gaye hain. Check karke confirm karein.</p></div>
+  <a class="btn ghost" href="{{ url_for('flows.previous_index') }}">← Back</a></div>
+{% if draft.ai_notes %}<div class="flash {{ 'ok' if draft.ai_confidence|int >= 70 else 'warn' }}">Confidence: <b>{{ draft.ai_confidence }}%</b> — {{ draft.ai_notes }}</div>{% endif %}
+<form class="card" method="post" action="{{ url_for('flows.previous_confirm') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="field">Subject template<input name="subject_template" value="{{ draft.subject_template }}"></label>
+  <label class="field">Body template<textarea class="input" name="body_template" rows="10">{{ draft.body_template }}</textarea></label>
+  <div class="form-row"><label class="field grow">Group by column (har unique value = ek mail)<select name="key_col" class="input">{% for c in draft.columns %}<option {{ 'selected' if c == draft.key_col }}>{{ c }}</option>{% endfor %}</select></label></div>
+  <div class="form-row"><label class="field grow">Default To<input name="to" value="{{ draft.old_mail.to }}"></label><label class="field grow">CC<input name="cc" value="{{ draft.old_mail.cc }}"></label><label class="field grow">BCC<input name="bcc" value="{{ draft.old_mail.bcc }}"></label></div>
+  <p class="muted small">Available columns: {{ draft.columns|join(', ') }}</p>
+  <details class="manage"><summary>Sample row</summary><pre class="plain">{% for k, v in draft.sample_row.items() %}{{ k }}: {{ v }}
+{% endfor %}</pre></details>
+  <button class="btn" type="submit" style="margin-top:.8rem">Confirm & build mails →</button>
+</form>
+{% endblock %}

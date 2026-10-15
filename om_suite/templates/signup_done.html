@@ -1,0 +1,7 @@
+{% extends "auth_base.html" %}
+{% block title %}Pending approval{% endblock %}
+{% block body %}
+<h1>Account ban gaya ✔</h1>
+<p class="sub"><b>{{ email }}</b> ka account admin approval ke liye pending hai. Approve hone par aap login kar payenge.</p>
+<a class="btn block ghost" href="{{ url_for('auth.login') }}">Login page par jayein</a>
+{% endblock %}

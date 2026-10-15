@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Dashboard · {{ app_name }}{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Namaste, {{ user.name.split(' ')[0] }} 👋</h2><p>Aapke tools neeche hain. Kuch missing lage to admin se access maang lein.</p></div>
+{% if user.role == 'admin' and pending_count %}<a class="btn" href="{{ url_for('admin.users') }}">{{ pending_count }} signup approval pending</a>{% endif %}</div>
+{% for group, items in groups %}
+  <div class="group-title">{{ group }}</div>
+  <div class="grid">
+  {% for m in items %}
+    {% if m.status == 'live' %}{% set href = url_for(m.endpoint) %}
+    {% elif m.status == 'external' and gr_auto_url %}{% set href = gr_auto_url %}
+    {% else %}{% set href = url_for('main.module_page', module_id=m.id) %}{% endif %}
+    <a class="tile {{ 'soon' if m.status == 'soon' }}" href="{{ href }}" {% if m.status == 'external' and gr_auto_url %}target="_blank" rel="noopener"{% endif %}>
+      <div class="tile-top"><span class="tile-icon">{{ icon(m.icon) }}</span>
+        {% if m.status == 'live' %}<span class="pill live">Live</span>
+        {% elif m.status == 'soon' %}<span class="pill soon">Phase {{ m.phase }}</span>
+        {% else %}<span class="pill">{{ 'Opens in new tab' if gr_auto_url else 'Link pending' }}</span>{% endif %}</div>
+      <b>{{ m.name }}</b><p>{{ m.desc }}</p>
+    </a>
+  {% endfor %}
+  </div>
+{% endfor %}
+{% endblock %}

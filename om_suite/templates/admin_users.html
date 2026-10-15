@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Users & Access · {{ app_name }}{% endblock %}
+{% block page_title %}Users & Access{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Users & Access</h2><p>Signup approve karo, tool access do, block ya password reset karo.</p></div>
+  <a class="btn ghost" href="{{ url_for('admin.audit') }}">{{ icon('audit', 18) }} Audit log</a></div>
+<form class="search-row" method="get"><input class="input" type="search" name="q" value="{{ q }}" placeholder="Name ya email se search"><button class="btn ghost" type="submit">Search</button></form>
+<div class="card" style="padding:0">
+<div class="table-wrap"><table class="tbl">
+  <thead><tr><th>User</th><th>Status</th><th>Tool access</th><th>Last login</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><b>{{ r.name }}</b><br><span class="muted small">{{ r.email }}</span></td>
+      <td><span class="pill {{ r.status }}">{{ r.status|capitalize }}</span>{% if r.role == 'admin' %} <span class="pill admin">Admin</span>{% endif %}</td>
+      <td>{% if r.role == 'admin' or '*' in r.modules %}<span class="muted small">All tools</span>
+          {% elif r.modules %}<div class="chips">{% for mid in r.modules %}<span class="chip">{{ mid }}</span>{% endfor %}</div>
+          {% else %}<span class="muted small">—</span>{% endif %}</td>
+      <td class="muted small">{{ r.last_login|int|timestamp if r.last_login else '—' }}</td>
+      <td>
+        <details class="manage"{% if r.status == 'pending' %} open{% endif %}><summary>Manage</summary>
+        <div class="manage-panel">
+          {% if r.role != 'admin' %}
+          <form method="post" action="{{ url_for('admin.user_action', uid=r.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <b class="small">Tool access</b>
+            <div class="checks">{% for m in assignable %}<label><input type="checkbox" name="modules" value="{{ m.id }}" {% if r.status == 'pending' or m.id in r.modules or '*' in r.modules %}checked{% endif %}> {{ m.name }}{% if m.status == 'soon' %} <span class="muted small">(soon)</span>{% endif %}</label>{% endfor %}</div>
+            {% if r.status == 'pending' %}<button class="btn sm" name="action" value="approve">Approve</button>
+            {% else %}<button class="btn sm" name="action" value="save_modules">Save access</button>{% endif %}
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin.user_action', uid=r.id) }}" class="row-actions">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if r.status == 'blocked' %}<button class="btn sm ghost" name="action" value="unblock">Unblock</button>
+            {% elif r.status == 'approved' %}<button class="btn sm ghost" name="action" value="block" data-confirm="{{ r.email }} ko block karein? Turant logout ho jayega.">Block</button>{% endif %}
+            <button class="btn sm ghost" name="action" value="reset_password" data-confirm="{{ r.email }} ka password reset karein?">Reset password</button>
+            {% if r.role == 'admin' %}<button class="btn sm ghost" name="action" value="demote" data-confirm="Admin rights hata dein?">Remove admin</button>
+            {% elif r.status == 'approved' %}<button class="btn sm ghost" name="action" value="promote" data-confirm="{{ r.email }} ko admin banayein?">Make admin</button>{% endif %}
+            <button class="btn sm danger" name="action" value="delete" data-confirm="{{ r.email }} ko hamesha ke liye delete karein?">Delete</button>
+          </form>
+        </div></details>
+      </td>
+    </tr>
+  {% else %}<tr><td colspan="5" class="empty">Koi user nahi mila.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

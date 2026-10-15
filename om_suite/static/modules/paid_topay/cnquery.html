@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CN Query Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --bg:#F4F7FB; --panel:#ffffff; --ink:#12233F; --muted:#5B6B84; --line:#DCE3EE;
+  --brand:#2563EB; --brand-ink:#ffffff; --brand-soft:#E8F0FE;
+  --ok:#17663a; --ok-bg:#dff3e7;
+  --transit:#8a5a00; --transit-bg:#fdf0cf;
+  --issue:#a3261f; --issue-bg:#fbe1de;
+  --err:#5b3f8c; --err-bg:#ece6f7;
+  --queued:#4a5568; --queued-bg:#e6e9ef;
+  --row-alt:#f7f9fc; --row-hover:#EEF4FF;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1622; --panel:#172233; --ink:#e5ebf5; --muted:#93a1b8; --line:#2b3a52;
+    --brand:#5aa9ee; --brand-ink:#0b1626; --brand-soft:#1c3352;
+    --ok:#6fd39a; --ok-bg:#15382a;
+    --transit:#f0c05a; --transit-bg:#3a2f12;
+    --issue:#ff9b93; --issue-bg:#43201d;
+    --err:#c4aef0; --err-bg:#2e2647;
+    --queued:#aab5c8; --queued-bg:#233047;
+    --row-alt:#1a2638; --row-hover:#213350;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:20px 18px 60px}
+header h1{font-size:22px;margin:0 0 2px;font-weight:600}
+header p{margin:0;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:16px}
+.card h2{font-size:15px;margin:0 0 12px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:-4px 0 14px}
+.tab{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:8px 14px;font-weight:500;color:var(--muted)}
+.tab.on{color:var(--ink);border-bottom-color:var(--brand)}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:26px 14px;text-align:center;cursor:pointer;color:var(--muted);transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft);color:var(--ink)}
+.drop b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
+textarea{width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--bg);color:var(--ink);font:13px/1.4 "JetBrains Mono",ui-monospace,Consolas,monospace}
+label.f{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+select,input[type=search],input[type=text]{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:7px 9px;font:inherit;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px}
+button:hover:not(:disabled){border-color:var(--brand)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+button.link{border:none;background:none;color:var(--brand);padding:0;text-decoration:underline}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.info{margin-top:10px;color:var(--muted)}
+.info b{color:var(--ink)}
+.banner{margin-top:12px;padding:10px 12px;border-radius:6px;background:var(--issue-bg);color:var(--issue)}
+.progress{height:8px;background:var(--queued-bg);border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.progress>div{height:100%;width:0;background:var(--brand);transition:width .2s}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:var(--panel);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip b{font-variant-numeric:tabular-nums}
+.chip.on{border-color:var(--brand);background:var(--brand-soft);font-weight:600}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+.toolbar .grow{flex:1;min-width:180px}
+.toolbar input[type=search]{width:100%}
+details.cols{position:relative}
+details.cols summary{list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:6px;padding:7px 13px;background:var(--panel)}
+details.cols summary::-webkit-details-marker{display:none}
+details.cols .menu{position:absolute;right:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:4px;width:230px;max-height:340px;overflow:auto;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+details.cols .menu label{display:flex;gap:8px;padding:3px 0;cursor:pointer}
+.tablewrap{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:68vh;background:var(--panel)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th,td{padding:7px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);z-index:2;cursor:pointer;user-select:none;font-weight:600;border-bottom:2px solid var(--line)}
+th.sorted::after{content:" \25B2";font-size:10px;color:var(--brand)}
+th.sorted.desc::after{content:" \25BC"}
+tbody tr:nth-child(even){background:var(--row-alt)}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--row-hover)}
+td.cn{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-weight:500}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.long{white-space:normal;min-width:220px;max-width:340px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:500}
+.b-delivered{background:var(--ok-bg);color:var(--ok)}
+.b-transit{background:var(--transit-bg);color:var(--transit)}
+.b-issue{background:var(--issue-bg);color:var(--issue)}
+.b-error{background:var(--err-bg);color:var(--err)}
+.b-queued,.b-loading,.b-other{background:var(--queued-bg);color:var(--queued)}
+.src{font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+dialog{border:1px solid var(--line);border-radius:10px;padding:0;background:var(--panel);color:var(--ink);width:min(920px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(8,14,26,.55)}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:3}
+.dhead h3{margin:0;font-size:17px;font-weight:600}
+.dbody{padding:16px 18px 22px;overflow:auto;max-height:calc(90vh - 60px)}
+.detail h4{margin:20px 0 8px;font-size:14px}
+.detail h3.big{margin:0 0 10px;font-size:17px;font-weight:600}
+.summary{background:var(--brand-soft);border-radius:8px;padding:10px 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 18px}
+.kv span{display:block;font-size:12px;color:var(--muted)}
+.kv b{font-weight:500;word-break:break-word}
+.journey{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.journey li{position:relative;padding:0 0 14px 16px}
+.journey li::before{content:"";position:absolute;left:-22px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--brand)}
+.journey li.last::before{background:var(--ok)}
+.journey small{color:var(--muted);display:block}
+.scroll{overflow:auto}
+.mini{width:100%;border-collapse:collapse}
+.mini th,.mini td{padding:5px 8px;border-bottom:1px solid var(--line);position:static;cursor:default}
+details.raw{margin-top:18px}
+details.raw summary{cursor:pointer;color:var(--brand)}
+details.raw pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;max-height:320px;font:12px/1.4 "JetBrains Mono",ui-monospace,Consolas,monospace}
+#singleOut{margin-top:16px;padding-top:6px;border-top:1px solid var(--line)}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;padding:7px 0;cursor:pointer}
+.billbox{display:flex;flex-wrap:wrap;gap:10px 30px;align-items:center;margin:0 0 14px;padding:12px 16px;border-radius:8px;border:1px solid}
+.billbox.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.billbox.no{background:var(--transit-bg);border-color:var(--transit);color:var(--transit)}
+.billbox.na{background:var(--queued-bg);border-color:var(--line);color:var(--queued)}
+.billbox .lbl{font-size:11px;letter-spacing:.05em;text-transform:uppercase;opacity:.85}
+.billbox .val{font:600 20px/1.2 "JetBrains Mono",ui-monospace,Consolas,monospace;word-break:break-all}
+.billbox .val.sm{font-size:15px;font-family:"Inter",system-ui,sans-serif}
+.billbox .side{margin-left:auto;text-align:right;font-size:12px}
+button.copy{margin-top:4px;padding:3px 10px;font-size:12px;border-color:currentColor;background:transparent;color:inherit}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CN Query Tool</h1>
+    <p>Ek CN ka poora data dekho, ya Excel se bahut saare CN ek saath query karke result Excel me download karo.</p>
+  </header>
+
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab on" type="button" role="tab" data-tab="single">Single CN</button>
+      <button class="tab" type="button" role="tab" data-tab="bulk">Bulk (Excel)</button>
+    </div>
+    <div class="row" style="margin:0 0 4px">
+      <div>
+        <label class="f" for="srcMode">Data kahan se lena hai</label>
+        <select id="srcMode">
+          <option value="auto" selected>Auto: pehle New API, data na mile to Old API</option>
+          <option value="both">Dono API se data mila kar (Merge)</option>
+          <option value="new">Sirf New API</option>
+          <option value="old">Sirf Old API</option>
+        </select>
+      </div>
+      <div>
+        <label class="chk"><input type="checkbox" id="billFb" checked> Bill na mile to Old API bhi check karo (Auto mode)</label>
+      </div>
+      <div>
+        <label class="chk"><input type="checkbox" id="extraCols" checked> Excel me extra columns (Bill Amount, Status, POD, Transit Days...)</label>
+      </div>
+    </div>
+
+    <div id="pane-single">
+      <div class="row">
+        <div>
+          <label class="f" for="one">CN number</label>
+          <input type="text" id="one" inputmode="numeric" placeholder="5723261001502" style="width:240px">
+        </div>
+        <button class="primary" id="oneBtn" type="button">Search</button>
+      </div>
+      <div id="singleOut" hidden></div>
+    </div>
+  </section>
+
+  <div id="pane-bulk" hidden>
+    <section class="card">
+      <h2>CN list do</h2>
+      <div class="two">
+        <div>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Excel file choose karo">
+            <b>Excel / CSV file yahan drop karo</b>
+            ya click karke file choose karo (.xlsx, .xls, .csv)
+          </div>
+          <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+          <div class="row">
+            <div id="sheetBox" hidden>
+              <label class="f" for="sheetSel">Sheet</label>
+              <select id="sheetSel"></select>
+            </div>
+            <div id="colBox" hidden>
+              <label class="f" for="colSel">CN wala column</label>
+              <select id="colSel"></select>
+            </div>
+            <button class="link" id="tplBtn" type="button">Sample Excel download</button>
+          </div>
+        </div>
+        <div>
+          <label class="f" for="paste">Ya CN numbers yahan paste karo (line, space ya comma se alag)</label>
+          <textarea id="paste" placeholder="5723261001502&#10;1308251024203"></textarea>
+          <div class="row" style="margin-top:8px"><button id="pasteBtn" type="button">Paste se CN lo</button></div>
+        </div>
+      </div>
+      <div class="info" id="loadInfo">Abhi koi CN load nahi hua.</div>
+      <div class="row">
+        <div>
+          <label class="f" for="conc">Ek saath kitne query</label>
+          <select id="conc"><option>1</option><option>3</option><option selected>5</option><option>8</option><option>10</option></select>
+        </div>
+        <button class="primary" id="startBtn" type="button" disabled>Status check karo</button>
+        <button id="stopBtn" type="button" disabled>Roko</button>
+        <button id="retryBtn" type="button" disabled>Failed dobara try karo</button>
+      </div>
+      <div class="banner" id="corsBanner" hidden></div>
+    </section>
+
+    <section class="card" id="resCard" hidden>
+      <h2>Result</h2>
+      <div id="progText" class="info" style="margin:0"></div>
+      <div class="progress"><div id="progBar"></div></div>
+      <div class="chips" id="chips"></div>
+      <div class="chips" id="billChips" style="margin-top:8px"></div>
+      <div class="toolbar">
+        <div class="grow"><input type="search" id="q" placeholder="Search: CN, party, branch, lorry, status..." aria-label="Search"></div>
+        <details class="cols" id="colDetails">
+          <summary>Columns</summary>
+          <div class="menu" id="colMenu"></div>
+        </details>
+        <button id="exportBtn" type="button">Excel me download</button>
+      </div>
+      <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="dhead"><h3 id="dTitle"></h3><button id="dClose" type="button">Band karo</button></div>
+  <div class="dbody detail" id="dBody"></div>
+</dialog>
+
+<script>
+const API_NEW = "https://load.omone.in/utility-service/api/cn-status/";
+const API_OLD = "https://scm.omlogistics.co.in/api/cncreation/Search-CNQuery";
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pad = n => String(n).padStart(2, "0");
+/* ---------- dates: text se seedha parse (timezone ka jhanjhat nahi) ---------- */
+const MON = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseDT(s){
+  if(s == null || s === "") return null;
+  const t = String(s).trim();
+  let m, y, mo, d, hh = 0, mi = 0, ss = 0, ap = "";
+  if((m = t.match(/(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/))){
+    y = +m[1]; mo = +m[2]; d = +m[3]; hh = +(m[4] || 0); mi = +(m[5] || 0); ss = +(m[6] || 0);
+  } else if((m = t.match(/(\d{1,2})[-.\/ ]([A-Za-z]{3})[A-Za-z]*[-.\/ ]*(\d{2,4})(?:[,\s]+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?(?:[.:]\d+)?\s*(AM|PM)?)?/i))){
+    d = +m[1]; mo = MON[m[2].toLowerCase()]; y = +m[3]; hh = +(m[4] || 0); mi = +(m[5] || 0); ss = +(m[6] || 0); ap = (m[7] || "").toUpperCase();
+  } else if((m = t.match(/(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{2,4})(?:[,\s]+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?(?:[.:]\d+)?\s*(AM|PM)?)?/i))){
+    d = +m[1]; mo = +m[2]; y = +m[3]; hh = +(m[4] || 0); mi = +(m[5] || 0); ss = +(m[6] || 0); ap = (m[7] || "").toUpperCase();
+  } else return null;
+  if(y < 100) y += 2000;
+  if(ap && hh <= 12){ if(ap === "PM" && hh < 12) hh += 12; if(ap === "AM" && hh === 12) hh = 0; }
+  if(!mo || mo > 12 || !d || d > 31 || hh > 23 || mi > 59) return null;
+  return {y, mo, d, hh, mi, ss};
+}
+function fmtDate(s){                       // DD-MM-YYYY (time ho to HH:mm bhi)
+  const p = parseDT(s);
+  if(!p) return s == null ? "" : String(s);
+  const dd = `${pad(p.d)}-${pad(p.mo)}-${p.y}`;
+  return (p.hh || p.mi || p.ss) ? `${dd} ${pad(p.hh)}:${pad(p.mi)}` : dd;
+}
+function fmtD(s){                          // sirf DD-MM-YYYY
+  const p = parseDT(s);
+  return p ? `${pad(p.d)}-${pad(p.mo)}-${p.y}` : (s == null ? "" : String(s));
+}
+function dateKey(s){ const p = parseDT(s); return p ? Date.UTC(p.y, p.mo - 1, p.d, p.hh, p.mi, p.ss) : ""; }
+function dayDiff(a, b){ return Math.round((Date.UTC(b.y, b.mo - 1, b.d) - Date.UTC(a.y, a.mo - 1, a.d)) / 864e5); }
+const money = n => { const x = Number(n); return (n === "" || n == null || isNaN(x)) ? String(n ?? "") : x.toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2}); };
+const round2 = x => Math.round(x * 100) / 100;
+
+/* ---------- BILL: dono API ka bill data ek hi shape me ---------- */
+const hasBill = d => !!(d && d.bill && d.bill.billNo !== "" && d.bill.billNo != null);
+function mkBill(list){
+  const byNo = new Map();
+  list.forEach(b => {
+    if(!b || b.billNo === "" || b.billNo == null) return;
+    const no = String(b.billNo).trim();
+    if(no && !byNo.has(no)) byNo.set(no, b);          // same bill 2 baar aaye to sirf ek baar gino
+  });
+  if(!byNo.size) return null;
+  const rows = [...byNo.entries()].map(([no, b]) => ({billNo:no, billDate:fmtD(b.billDate), total:b.total, sgstAmt:b.sgstAmt, cgstAmt:b.cgstAmt, igstAmt:b.igstAmt}));
+  const sum = k => { const v = rows.map(b => parseFloat(b[k])).filter(x => !isNaN(x)); return v.length ? round2(v.reduce((a, b) => a + b, 0)) : ""; };
+  const dates = [...new Set(rows.map(b => b.billDate).filter(Boolean))];
+  return {billNo: rows.map(b => b.billNo).join(", "), billDate: dates.join(", "), total: sum("total"),
+          sgstAmt: sum("sgstAmt"), cgstAmt: sum("cgstAmt"), igstAmt: sum("igstAmt"), count: rows.length};
+}
+/* New API: bill "billFreight" array me aata hai; DDR "outDdr*" naam se */
+function normalizeNew(d){
+  const n = Object.assign({}, d);
+  const bf = Array.isArray(d.billFreight) ? d.billFreight : [];
+  n.bill = mkBill(bf.map(b => ({billNo:b.billNo, billDate:b.billDate, total:b.totalAmt})));
+  const dd = d.ddr;
+  n.ddr = dd && (dd.outDdrNo != null || dd.outDdrDate) ? {ddrNo: dd.outDdrNo ?? "", ddrDate: fmtDate(dd.outDdrDate), remarks: dd.outDdrRemark ?? ""} : null;
+  return n;
+}
+const CN_RE = /\d+/;
+const isObj = v => v !== null && typeof v === "object";
+const fmtCell = v => v == null ? "" : isObj(v) ? JSON.stringify(v) : v;
+
+/* flatten any JSON into { "a.b[1].c": value } */
+function flatten(o, prefix = "", out = {}){
+  if(o === null || o === undefined){ if(prefix) out[prefix] = ""; return out; }
+  if(Array.isArray(o)){
+    if(!o.length){ out[prefix] = ""; return out; }
+    if(o.every(x => !isObj(x))){ out[prefix] = o.join(", "); return out; }
+    o.forEach((x, i) => flatten(x, `${prefix}[${i + 1}]`, out));
+    return out;
+  }
+  if(isObj(o)){ Object.entries(o).forEach(([k, v]) => flatten(v, prefix ? `${prefix}.${k}` : k, out)); return out; }
+  out[prefix] = o;
+  return out;
+}
+/* ---------- columns (bulk table + Excel): sirf OM Report "Success Report" wale 30 columns ---------- */
+const flatCache = new WeakMap();
+function dataLeaves(d){
+  let l = flatCache.get(d);
+  if(!l){
+    l = Object.entries(flatten(d)).filter(([k]) => !k.startsWith("oldSections")).map(([k, v]) => [k.toLowerCase().replace(/[^a-z0-9]/g, ""), v]);
+    flatCache.set(d, l);
+  }
+  return l;
+}
+function F(d, ...res){
+  const l = dataLeaves(d);
+  for(const re of res) for(const [k, v] of l) if(re.test(k) && v !== "" && v != null) return v;
+  return "";
+}
+function splitCode(v){
+  const t = String(v == null ? "" : v).replace(/\s+/g, " ").replace(/\s*\[\s*\]\s*$/, "").trim();
+  const m = t.match(/^(\d[A-Za-z0-9]*)\s*-\s*(.+)$/);
+  return m ? [m[1], m[2].trim()] : ["", t];
+}
+function numify(v){
+  if(typeof v !== "string") return v;
+  const t = v.trim();
+  return /^-?\d+(\.\d+)?$/.test(t) && !/^-?0\d/.test(t) && t.length <= 15 ? Number(t) : v;
+}
+const MONEY = "#,##0.00";
+function billStatus(r){
+  if(!r || r.state !== "ok") return "";
+  return hasBill(r.data) ? "Billed" : "Not billed";
+}
+function transitDays(d){
+  const a = parseDT(d.main.cnDate), b = parseDT(d.main.deliveryDate);
+  return a && b ? dayDiff(a, b) : "";
+}
+const joinOf = (arr, k) => (arr || []).map(x => x && x[k]).filter(v => v !== "" && v != null).join(", ");
+/* k = key | label | def = table me default dikhe | dt = date column (Excel me real date) | fmt = Excel number format | extra = naye columns */
+const COLS = [
+  {k:"cn",         label:"CN",              def:true, cls:"cn", n:true, fmt:"0", get:(d,r)=>r.cn},
+  {k:"billNo",     label:"Bill No",         def:true, n:true, fmt:"0", get:d=>d.bill && d.bill.billNo},
+  {k:"billDate",   label:"Bill Date",       def:true, dt:"d", get:d=>d.bill && d.bill.billDate},
+  {k:"remarks",    label:"Remarks",         def:true, cls:"long", get:d=>d.main.remarks},
+  {k:"cnDate",     label:"CN Date",         def:true, dt:"d", get:d=>fmtD(d.main.cnDate)},
+  {k:"partyCode",  label:"Party Code",      def:true, get:d=>splitCode(d.main.billingParty)[0] || F(d,/partycode$/)},
+  {k:"partyName",  label:"Party Name",      def:true, get:d=>splitCode(d.main.billingParty)[1] || F(d,/partyname$/)},
+  {k:"srcCode",    label:"Source Code",     def:true, get:d=>splitCode(d.main.source)[0] || F(d,/sourcecode$/)},
+  {k:"srcBranch",  label:"Source Branch",   def:true, get:d=>splitCode(d.main.source)[1]},
+  {k:"dstCode",    label:"Destination Code",   def:true, get:d=>splitCode(d.main.destination)[0] || F(d,/destinationcode$/)},
+  {k:"dstBranch",  label:"Destination Branch", def:true, get:d=>splitCode(d.main.destination)[1]},
+  {k:"cngrCode",   label:"Consignor Code",  def:true, get:d=>splitCode(d.main.consignor)[0] || F(d,/consignorcode$/)},
+  {k:"cngrName",   label:"Consignor Name",  def:true, get:d=>splitCode(d.main.consignor)[1]},
+  {k:"cngeCode",   label:"Consignee Code",  def:true, get:d=>splitCode(d.main.consignee)[0] || F(d,/consigneecode$/)},
+  {k:"cngeName",   label:"Consignee Name",  def:true, get:d=>splitCode(d.main.consignee)[1]},
+  {k:"status",     label:"CN Status",       def:true, get:d=>d.main.currentStatus},
+  {k:"bmode",      label:"Booking Mode",    def:true, get:d=>d.main.bookingMode},
+  {k:"fmode",      label:"Freight Mode",    def:true, get:d=>d.main.freightMode},
+  {k:"pkg",        label:"Package",         def:true, cls:"num", n:true, fmt:"0", get:d=>d.main.pkg},
+  {k:"gross",      label:"Gross Value",     def:true, cls:"num", n:true, fmt:MONEY, get:d=>d.main.grossValue},
+  {k:"net",        label:"Net Value",       def:true, cls:"num", n:true, fmt:MONEY, get:d=>d.main.netValue || F(d,/netvalue$/)},
+  {k:"wt",         label:"Charged Weight",  def:true, cls:"num", n:true, get:d=>d.main.chargedWeight},
+  {k:"aWt",        label:"Actual Weight",   def:true, cls:"num", n:true, get:d=>d.main.actualWeight},
+  {k:"freight",    label:"Freight Total",   def:true, cls:"num", n:true, fmt:MONEY, get:d=>d.main.freightTotal || (d.freight && d.freight.cnTotalTotal)},
+  {k:"rate",       label:"Rate Per KG",     def:true, cls:"num", n:true, get:d=>d.freight && d.freight.cnRatePerKg},
+  {k:"fov",        label:"FOV",             def:true, cls:"num", n:true, get:d=>d.freight && d.freight.cnFov},
+  {k:"ddr",        label:"DDR No",          def:true, n:true, fmt:"0", get:d=>(d.ddr && d.ddr.ddrNo) || F(d,/ddrno$/)},
+  {k:"lorry",      label:"Lorry No",        def:true, get:d=>d.main.lorryNo},
+  {k:"delDate",    label:"Delivery Date",   def:true, dt:"dt", get:d=>fmtDate(d.main.deliveryDate)},
+  {k:"lorryType",  label:"Lorry Type",      def:true, get:d=>d.main.lorryType},
+  /* ---- naye (extra) columns: Excel me checkbox se on/off ---- */
+  {k:"billAmt",    label:"Bill Amount",     def:true,  extra:true, cls:"num", n:true, fmt:MONEY, get:d=>d.bill && d.bill.total},
+  {k:"billStat",   label:"Billing Status",  def:true,  extra:true, get:(d,r)=>billStatus(r)},
+  {k:"billSrc",    label:"Bill Source",     def:false, extra:true, get:(d,r)=>r.billSrc || ""},
+  {k:"podDate",    label:"POD Received",    def:false, extra:true, dt:"d", get:d=>fmtD(d.main.podRecDate)},
+  {k:"tat",        label:"Transit Days",    def:false, extra:true, cls:"num", n:true, fmt:"0", get:d=>transitDays(d)},
+  {k:"invNo",      label:"Invoice No",      def:false, extra:true, get:d=>joinOf(d.invoice, "cnInvoiceNo")},
+  {k:"eway",       label:"E-way Bill No",   def:false, extra:true, get:d=>joinOf(d.invoice, "ewayBillNo")},
+  {k:"src",        label:"Data Source",     def:false, extra:true, get:(d,r)=>srcLabel(r)}
+];
+let visible = new Set(COLS.filter(c=>c.def).map(c=>c.k));
+/* ---------- Old API data ko New-API jaise structure me badalna ---------- */
+const nk = k => String(k).toLowerCase().replace(/[^a-z0-9]/g, "");
+const leavesOf = row => Object.entries(row || {}).filter(([, v]) => !isObj(v)).map(([k, v]) => [nk(k), v]);
+function pick(leaves, regs){
+  for(const re of regs){
+    for(const [k, v] of leaves){ if(re.test(k) && v !== "" && v != null) return v; }
+  }
+  return "";
+}
+function chargePair(leaves, base){
+  const m = leaves.filter(([k, v]) => base.test(k) && v !== "" && v != null);
+  const isAmt = k => /(a|amt|amount|total)$/.test(k);
+  const amt = m.find(([k]) => isAmt(k)), rate = m.find(([k]) => !isAmt(k));
+  return [rate ? rate[1] : undefined, amt ? amt[1] : undefined];
+}
+function sectionsOf(rec){
+  const out = [], prim = {};
+  if(Array.isArray(rec)) return [["Data", rec.filter(isObj)]];
+  if(!isObj(rec)) return out;
+  Object.entries(rec).forEach(([k, v]) => {
+    if(Array.isArray(v)) out.push([k, v.filter(isObj)]);
+    else if(isObj(v)) out.push([k, [v]]);
+    else prim[k] = v;
+  });
+  if(Object.keys(prim).length) out.unshift(["Meta", [prim]]);    // {error:false} jaisa flag "Main" na ban jaye
+  return out;
+}
+function secKind(name){
+  const n = nk(name);
+  if(/^(main|data|table\d*|result|rows?|records?|cnmain|cndetails?)$/.test(n)) return "main";
+  if(/^ddr/.test(n)) return "ddr";
+  if(/challan|chln/.test(n)) return "challan";
+  if(/^bill/.test(n)) return "bill";
+  if(/^freight|^charge/.test(n)) return "freight";
+  if(/^invoice/.test(n)) return "invoice";
+  return "other";
+}
+const H12 = h => ({h: (h % 12) || 12, ap: h >= 12 ? "PM" : "AM"});
+/* Old API ka status "DELIVERED-ON-21-AUG-26 02:35" hota hai; New API jaisa "Delivered - 21.08.2026,02:35:54 AM" bana do */
+function niceStatus(st, delivDate){
+  const s = String(st ?? "").trim();
+  if(!/^delivered/i.test(s)) return s;
+  const p = parseDT(delivDate) || parseDT(s);
+  if(!p) return s;
+  const {h, ap} = H12(p.hh);
+  return `Delivered - ${pad(p.d)}.${pad(p.mo)}.${p.y},${pad(h)}:${pad(p.mi)}:${pad(p.ss)} ${ap}`;
+}
+function buildFromOld(rec){
+  let secs = sectionsOf(rec);
+  if(!secs.some(([n]) => secKind(n) === "main")) secs = secs.map(([n, r]) => n === "Meta" ? ["Main", r] : [n, r]);   // flat record
+  const rowsOf = kind => secs.filter(([n]) => secKind(n) === kind).flatMap(([, rows]) => rows);
+  const mainRows = rowsOf("main");
+  const mainL = mainRows.flatMap(r => leavesOf(r));           // FIX: pehle sirf pehli row (= {error:false}) padhi jaati thi
+  const g = (...res) => pick(mainL, res);
+  const nm = (code, name) => name ? (code !== "" ? `${code}-${name}` : name) : "";
+
+  const m = {
+    cnNo: g(/^cncnno$/, /cnno$/), cnDate: g(/^cndate$/, /bookingdate/, /cndate/),
+    source: g(/^(cn)?source$|frombranch|bookingbranch|origin/, /source/),
+    destination: g(/^(cn)?destination$|tobranch|destbranch/, /destination/),
+    consignor: nm(g(/^cnconsignorcode$/, /consignorcode$/), g(/^consignorname$/)) || g(/^consignor$/, /consignor|shipper/),
+    consignee: nm(g(/^cnconsigneecode$/, /consigneecode$/), g(/^consigneename$/)) || g(/^consignee$/, /consignee|receiver/),
+    billingParty: g(/billingparty|billparty|billedparty/),
+    freightMode: g(/freightpaidname/, /freightmode|freighttype|paytype|paidtype|billingtype/),
+    bookingMode: g(/tptrmodename/, /bookingmode/), deliveryMode: g(/deliverypointname/, /deliverymode/),
+    pkg: g(/^(cn)?(noof)?pkgs?$/, /package/),
+    chargedWeight: g(/chargew|chargedwt|chgwt/, /^weight$/), actualWeight: g(/actualw|actwt/),
+    grossValue: g(/^gvalue$/, /grossvalue|goodsvalue|invoicevalue|cnvalue/), netValue: g(/^nvalue$/, /netvalue/),
+    freightTotal: g(/^cntotaltotal$/),
+    lorryNo: g(/lorryno|vehicleno/, /lorry|vehicle/), lorryType: g(/lorrytype|vehicletype/),
+    deliveryDate: g(/deliver(y|ed)?(date|dt|on)|dlydate/), podRecDate: g(/podrec|podreceiv/),
+    currentBranchName: g(/^ccbname$/, /currentbranch|currentlocation|lastlocation/),
+    edd: g(/^(cn)?edd$/), eta: g(/^(cn)?eta$/), remarks: g(/^cnremarks$/, /remark/),
+    dlyAddress: g(/deliveryaddress|dlyaddress|consigneeaddr/), bookingAddress: g(/bookingaddress|consignoraddr/)
+  };
+  // status: pehle proper text field, warna kisi bhi string se jo "delivered/in transit..." se shuru ho
+  let st = g(/^cntransitstatus$/, /currentstatus/, /transitstatus$/, /^status$/);
+  if(!st || !/[a-z]/i.test(String(st))){
+    const hit = mainL.find(([, v]) => typeof v === "string" && /^(delivered|in ?transit|booked|out for|undelivered|return)/i.test(v.trim()));
+    st = hit ? hit[1] : st;
+  }
+  m.currentStatus = niceStatus(st, m.deliveryDate);
+
+  const challan = rowsOf("challan").map(r => {
+    const l = leavesOf(r);
+    return {
+      challanNo: pick(l, [/chlnchlnno|challanno/]), challanDate: pick(l, [/chlnchlndate|challandate/]),
+      chSource: pick(l, [/^chsource$/, /source/]), chDestination: pick(l, [/^chdestination$/, /destination/]),
+      chType: pick(l, [/chlntypename/, /chtype|challantype/]), lorryNo: pick(l, [/lorry|vehicle/]),
+      gateInDate: pick(l, [/gateindate/, /gatein/]), scanStatus: pick(l, [/scan/, /loadunload/])
+    };
+  });
+  const ck = c => { const v = dateKey(c.challanDate); return v === "" ? 0 : v; };
+  challan.sort((a, b) => ck(a) - ck(b));                        // Old API challan ulte-seedhe order me deta hai
+  if(!m.lorryNo && challan.length) m.lorryNo = challan[challan.length - 1].lorryNo;
+
+  const invoice = rowsOf("invoice").map(r => {
+    const l = leavesOf(r);
+    return {
+      cnInvoiceNo: pick(l, [/invoiceno|invno/]), ewayBillNo: pick(l, [/ewaybillno|ewayno|eway(?!.*valid)/]),
+      ewayBillValidDate: pick(l, [/valid/]), cnItemDescript: pick(l, [/item|descr/]),
+      pkgType: pick(l, [/pkgtyp/]), cnPkg: pick(l, [/^cnpkg$/]), cnChargeWt: pick(l, [/wt|weight/])
+    };
+  }).filter(i => Object.values(i).some(v => v !== ""));
+
+  const billRows = rowsOf("bill");
+  const bill = mkBill(billRows.map(r => {
+    const l = leavesOf(r);
+    return {billNo: pick(l, [/billbillno$/, /billno$/]), billDate: pick(l, [/billbilldate$/, /billdate$/]),
+            total: pick(l, [/^billtotal$/, /^billtotaltotal$/]),
+            sgstAmt: pick(l, [/sgstamt|sgstamount/]), cgstAmt: pick(l, [/cgstamt|cgstamount/]), igstAmt: pick(l, [/igstamt|igstamount/])};
+  }));
+  const billL = billRows.flatMap(r => leavesOf(r));
+  const ddrR = rowsOf("ddr"), ddrL = ddrR.length ? leavesOf(ddrR[0]) : [];
+  const ddr = {ddrNo: pick(ddrL, [/ddrno$/]), ddrDate: fmtDate(pick(ddrL, [/ddrentereddate|ddrdate/])), remarks: pick(ddrL, [/ddrremark/])};
+  const hasDdr = Object.values(ddr).some(v => v !== "");
+
+  const frRows = rowsOf("freight");
+  const frL = [...(frRows.length ? leavesOf(frRows[0]) : []), ...mainL, ...billL];
+  const fr = {};
+  const fRate = pick(frL, [/^cnrateperkg$/, /rateperkg$|ratekg$/]), fAmt = pick(frL, [/^cnrateperkga$/]);
+  if(fRate !== "") fr.cnRatePerKg = fRate;
+  if(fAmt !== "") fr.cnRatePerKgA = fAmt;
+  [["cnTCharges",/tcharge/],["cnSurcharge",/surcharge/],["cnHamali",/hamali/],["cnCollectionCharges",/collection/],
+   ["cnDeliveryCharges",/deliverycharge|dlycharge/],["cnDetentionCharges",/detention/],["cnLogisticsCharges",/logistic/],
+   ["cnDemurageCharges",/demurr?age/],["cnFov",/fov/],["cnCodOther",/codother|^cncod/]].forEach(([k, re]) => {
+    const [rt, am] = chargePair(frL, re);
+    if(rt !== undefined) fr[k] = rt;
+    if(am !== undefined) fr[k + "A"] = am;
+  });
+  let freight = null;
+  if(Object.keys(fr).some(k => k.endsWith("A"))){
+    [["Sgst","sgst"],["Cgst","cgst"],["Igst","igst"]].forEach(([K, n]) => {
+      const r = pick(frL, [new RegExp("^cn" + n + "rate$"), new RegExp(n + "rate$")]);
+      const a = pick(frL, [new RegExp("^cn" + n + "(amt|amount)$"), new RegExp(n + "(amt|amount)$")]);
+      if(r !== "") fr["cn" + K + "Rate"] = r;
+      if(a !== "") fr["cn" + K + "RateA"] = a;
+    });
+    // FIX: CN_TOTAL (GST se pehle) nahi, CN_TOTAL_TOTAL (final) lena hai
+    fr.cnTotalTotal = pick(frL, [/^cntotaltotal$/, /^totalamount$/]) || (bill && bill.total) || "";
+    freight = fr;
+  }
+  return {main: m, challan, invoice, freight, bill, ddr: hasDdr ? ddr : null,
+          oldSections: secs.filter(([, rows]) => rows.length)};
+}
+function mergeData(nd, od){
+  const d = JSON.parse(JSON.stringify(nd));
+  d.main = d.main || {};
+  Object.entries(od.main || {}).forEach(([k, v]) => { if((d.main[k] == null || d.main[k] === "") && v !== "" && v != null) d.main[k] = v; });
+  if(!(d.challan || []).length) d.challan = od.challan || [];
+  if(!(d.invoice || []).length) d.invoice = od.invoice || [];
+  if(!d.freight && od.freight) d.freight = od.freight;
+  if(!hasBill(d)) d.bill = od.bill || d.bill || null;         // FIX: New ka bill Old se overwrite nahi hoga
+  if(!(d.ddr && d.ddr.ddrNo)) d.ddr = od.ddr || d.ddr || null;
+  d.oldSections = od.oldSections;
+  return d;
+}
+const srcLabel = r => r.src === "old" ? "Old API" : r.src === "both" ? "New + Old API" : "New API";
+
+/* ---------- state ---------- */
+let cns = [];
+const results = new Map();
+let running = false, stopFlag = false;
+let filter = "all", query = "", sortKey = null, sortDesc = false;
+let workbook = null, sheetRows = [];
+
+function statusText(r){
+  if(r.state !== "ok") return "";
+  return String((r.data && r.data.main && r.data.main.currentStatus) || "");
+}
+function classify(r){
+  if(!r) return "queued";
+  if(r.state === "error") return "error";
+  if(r.state !== "ok") return r.state;
+  const s = statusText(r).toLowerCase();
+  if(!s) return "other";
+  if(s.startsWith("deliver")) return "delivered";
+  if(/undeliver|\breturn|\brto\b|damage|shortage|\bhold/.test(s)) return "issue";
+  return "transit";
+}
+const CLASS_LABEL = {delivered:"Delivered", transit:"In transit", issue:"Issue", error:"Failed", queued:"Queued", loading:"Loading...", other:"Data mila"};
+
+function cellValue(r, col){
+  if(r.state !== "ok"){
+    if(col.k === "cn") return r.cn;
+    if(col.k === "status") return r.state === "error" ? r.error : CLASS_LABEL[r.state];
+    return "";
+  }
+  if(col.k === "cn") return r.cn;
+  try { let v = col.get(r.data, r); if(v == null) return ""; return col.n ? numify(v) : v; } catch(e){ return ""; }
+}
+function rowText(r){
+  if(r._s) return r._s;
+  let s = COLS.map(c => cellValue(r, c)).join(" ");
+  if(r.state === "ok" && r.flat) s += " " + Object.values(r.flat).join(" ");
+  return (r._s = s.toLowerCase());
+}
+let billF = "all";
+function passes(r){
+  const c = classify(r);
+  if(filter !== "all" && (c === "loading" ? "queued" : c) !== filter) return false;
+  if(billF !== "all" && (r.state !== "ok" || hasBill(r.data) !== (billF === "billed"))) return false;
+  const q = query.trim().toLowerCase();
+  return !q || rowText(r).includes(q);
+}
+/* ---------- API calls ---------- */
+async function readJson(res){
+  const t = await res.text();
+  try { return JSON.parse(t); } catch(e){ return null; }
+}
+async function fetchT(url, opts, ms){
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 30000);
+  try { return await fetch(url, Object.assign({}, opts, {signal: ctl.signal})); }
+  finally { clearTimeout(t); }
+}
+const RETRY_HTTP = new Set([429, 500, 502, 503, 504]);
+const netErr = e => (e && e.name === "AbortError") ? "Timeout (server ne jawab nahi diya)" : "Network/CORS error";
+async function fetchNew(cn, retries){
+  for(let a = 0; ; a++){
+    try{
+      const res = await fetchT(API_NEW + encodeURIComponent(cn), {headers:{"Accept":"application/json"}});
+      if(RETRY_HTTP.has(res.status) && a < retries){ await sleep(800 * (a + 1)); continue; }
+      const j = await readJson(res);
+      if(!res.ok || !j || j.status !== "success" || !j.data || !j.data.main)
+        return {ok:false, error:(j && j.message) || ("HTTP " + res.status)};
+      return {ok:true, r:{state:"ok", src:"new", data:normalizeNew(j.data), newData:j.data}};
+    }catch(e){
+      if(a < retries){ await sleep(800 * (a + 1)); continue; }
+      return {ok:false, net:true, error:netErr(e)};
+    }
+  }
+}
+const WRAP_KEYS = ["data","Data","result","Result","response","Response","records","Records","table","Table","rows","Rows"];
+function unwrap(j){
+  if(isObj(j) && !Array.isArray(j)){
+    for(const k of WRAP_KEYS) if(k in j) return j[k];
+  }
+  return j;
+}
+async function fetchOld(cn, retries){
+  for(let a = 0; ; a++){
+    try{
+      const res = await fetchT(API_OLD, {
+        method:"POST", mode:"cors", credentials:"omit",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({CN_CN_NO:String(cn)})
+      });
+      if(RETRY_HTTP.has(res.status) && a < retries){ await sleep(800 * (a + 1)); continue; }
+      const j = await readJson(res);
+      if(!res.ok) return {ok:false, error:(j && (j.message || j.Message)) || ("HTTP " + res.status)};
+      if(j === null) return {ok:false, error:"Response JSON nahi hai"};
+      const failFlag = isObj(j) && !Array.isArray(j) && (j.success === false || j.Success === false || /^(error|fail)/i.test(String(j.status || "")));
+      let rec = unwrap(j);
+      if(Array.isArray(rec) && rec.length === 1) rec = rec[0];
+      if(failFlag || rec == null || rec === "") return {ok:false, nodata:true, error:"Data nahi mila"};
+      const built = buildFromOld(rec);
+      // FIX: pehle {error:false} ko bhi "data" maan liya jata tha. Ab CN ki asli detail honi chahiye.
+      if(!built.main.cnNo && !built.main.consignor && !built.main.source) return {ok:false, nodata:true, error:"Data nahi mila"};
+      return {ok:true, r:{state:"ok", src:"old", raw:rec, flat:flatten(rec), json:j, data:built}};
+    }catch(e){
+      if(a < retries){ await sleep(800 * (a + 1)); continue; }
+      return {ok:false, net:true, error:netErr(e)};
+    }
+  }
+}
+const setBillSrc = r => { r.billSrc = hasBill(r.data) ? (r.src === "old" ? "Old API" : r.src === "both" ? "" : "New API") : ""; return r; };
+
+async function lookup(cn){
+  const mode = $("#srcMode").value, fallback = $("#billFb").checked;
+  if(mode === "both"){
+    const [a, b] = await Promise.all([fetchNew(cn, 2), fetchOld(cn, 2)]);
+    if(a.ok && b.ok){
+      const r = {state:"ok", src:"both", data:mergeData(a.r.data, b.r.data), flat:null, oldFlat:b.r.flat, oldJson:b.r.json, newData:a.r.newData};
+      r.billSrc = hasBill(a.r.data) ? "New API" : (hasBill(r.data) ? "Old API" : "");
+      if(!r.billSrc) r.billNote = "New aur Old dono API me bill nahi mila";
+      return r;
+    }
+    if(a.ok) return setBillSrc(a.r);
+    if(b.ok) return setBillSrc(b.r);
+    return {state:"error", net:a.net && b.net, error:`New: ${a.error} | Old: ${b.error}`};
+  }
+  const tries = [];
+  if(mode !== "old"){
+    const a = await fetchNew(cn, mode === "auto" ? 1 : 2);
+    if(a.ok){
+      const r = setBillSrc(a.r);
+      // NEW: New API me bill nahi hai to Old API se ek baar check (sirf Auto mode me)
+      if(mode === "auto" && fallback && !hasBill(r.data)){
+        const b = await fetchOld(cn, 1);
+        if(b.ok && hasBill(b.r.data)){
+          r.data.bill = b.r.data.bill; r.billSrc = "Old API";
+          r.billNote = "New API me bill nahi tha, Old API se mil gaya";
+          r.oldJson = b.r.json;
+        } else {
+          r.billNote = b.ok || b.nodata ? "New aur Old dono API me bill nahi mila" : "New API me bill nahi mila; Old API check nahi ho paya (" + b.error + ")";
+        }
+      } else if(!hasBill(r.data)) r.billNote = "New API me bill nahi mila";
+      return r;
+    }
+    tries.push({who:"New", ...a});
+  }
+  if(mode !== "new"){
+    const b = await fetchOld(cn, mode === "auto" ? 1 : 2);
+    if(b.ok){ const r = setBillSrc(b.r); if(!hasBill(r.data)) r.billNote = "Old API me bill nahi mila"; return r; }
+    tries.push({who:"Old", ...b});
+  }
+  return {
+    state:"error",
+    net: tries.every(t => t.net),
+    error: tries.length === 1 ? tries[0].error : tries.map(t => `${t.who}: ${t.error}`).join(" | ")
+  };
+}
+
+/* ---------- detail rendering ---------- */
+function kv(k, v){ return (v == null || v === "") ? "" : `<div class="kv"><span>${esc(k)}</span><b>${esc(v)}</b></div>`; }
+function renderGeneric(o){
+  if(o == null) return "";
+  if(Array.isArray(o)){
+    if(!o.length) return "";
+    if(o.every(x => isObj(x) && !Array.isArray(x))){
+      const keys = [...new Set(o.flatMap(x => Object.keys(x)))];
+      return `<div class="scroll"><table class="mini"><thead><tr>${keys.map(k => `<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>` +
+        o.map(x => `<tr>${keys.map(k => `<td>${esc(fmtCell(x[k]))}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`;
+    }
+    return `<div>${esc(o.map(fmtCell).join(", "))}</div>`;
+  }
+  if(isObj(o)){
+    const prim = [], nested = [];
+    Object.entries(o).forEach(([k, v]) => (isObj(v) ? nested : prim).push([k, v]));
+    let h = prim.some(([, v]) => v !== "" && v != null) ? `<div class="grid">${prim.map(([k, v]) => kv(k, v)).join("")}</div>` : "";
+    nested.forEach(([k, v]) => { const inner = renderGeneric(v); if(inner) h += `<h4>${esc(k)}</h4>${inner}`; });
+    return h;
+  }
+  return esc(o);
+}
+function rawBlock(obj){
+  return `<details class="raw"><summary>Raw JSON dekho</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
+}
+
+/* ---------- single view: Bill No ka rangeen box ---------- */
+function billBox(r){
+  const b = r.data.bill, cls = classify(r);
+  if(b && b.billNo){
+    return `<div class="billbox ok">
+      <div><div class="lbl">Bill No</div><div class="val">${esc(b.billNo)}</div></div>
+      <div><div class="lbl">Bill Date</div><div class="val">${esc(b.billDate || "-")}</div></div>
+      ${b.total !== "" && b.total != null ? `<div><div class="lbl">Bill Amount</div><div class="val">&#8377; ${esc(money(b.total))}</div></div>` : ""}
+      <div class="side">${esc(r.billNote || (r.billSrc ? "Source: " + r.billSrc : ""))}<br><button type="button" class="copy" data-copy="${esc(b.billNo)}">Copy bill no</button></div></div>`;
+  }
+  const note = r.billNote ? `<div class="side">${esc(r.billNote)}</div>` : "";
+  if(cls === "delivered") return `<div class="billbox no"><div><div class="lbl">Bill No</div><div class="val sm">Delivered hai, par bill nahi bana</div></div>${note}</div>`;
+  return `<div class="billbox na"><div><div class="lbl">Bill No</div><div class="val sm">Bill abhi nahi bana</div></div>${note}</div>`;
+}
+function detailHtml(r){
+  if(r.state === "error"){
+    return `<div class="banner">${esc(r.cn)}: ${esc(r.error)}</div>`;
+  }
+  const cls = classify(r);
+  const head = `<h3 class="big">CN <span style="font-family:'JetBrains Mono',monospace">${esc(r.cn)}</span> <span class="badge b-${cls}">${esc(statusText(r) || CLASS_LABEL[cls])}</span> <span class="src">${srcLabel(r)}</span></h3>`;
+  const d = r.data, m = d.main;
+  let h = head + billBox(r);
+  if(d.cnAiSummary && d.cnAiSummary.summary) h += `<div class="summary">${esc(d.cnAiSummary.summary)}</div>`;
+  h += `<h4>Booking details</h4><div class="grid">` + [
+    ["CN Date", m.cnDate], ["From", m.source], ["To", m.destination], ["Consignor", m.consignor], ["Consignee", m.consignee],
+    ["Billing party", m.billingParty], ["Freight mode", m.freightMode], ["Booking mode", m.bookingMode], ["Delivery mode", m.deliveryMode],
+    ["Packages", m.pkg], ["Charged weight", m.chargedWeight], ["Actual weight", m.actualWeight], ["Goods value", m.grossValue],
+    ["Lorry no", m.lorryNo], ["Lorry type", m.lorryType], ["Delivery date", fmtDate(m.deliveryDate)], ["POD received", fmtDate(m.podRecDate)],
+    ["Current branch", m.currentBranchName], ["EDD", m.edd], ["ETA", m.eta], ["Remarks", m.remarks],
+    ["Delivery address", m.dlyAddress], ["Booking address", m.bookingAddress]
+  ].map(([k, v]) => kv(k, v)).join("") + `</div>`;
+
+  if(d.bill || d.ddr){
+    const b = d.bill || {}, dd = d.ddr || {};
+    h += `<h4>Billing &amp; DDR</h4><div class="grid">` + [
+      ["Bill no", b.billNo], ["Bill date", b.billDate], ["Bill total", b.total],
+      ["SGST amt", b.sgstAmt], ["CGST amt", b.cgstAmt], ["IGST amt", b.igstAmt],
+      ["DDR no", dd.ddrNo], ["DDR date", dd.ddrDate], ["DDR remarks", dd.remarks]
+    ].map(([k, v]) => kv(k, v)).join("") + `</div>`;
+  }
+  const ch = d.challan || [];
+  if(ch.length){
+    h += `<h4>Journey (${ch.length} challan)</h4><ul class="journey">` + ch.map((c, i) =>
+      `<li class="${i === ch.length - 1 ? "last" : ""}"><b>${esc(c.chSource)} &rarr; ${esc(c.chDestination)}</b>
+       <small>${esc(c.chType)} &middot; Challan ${esc(c.challanNo)} &middot; ${esc(c.challanDate)}</small>
+       <small>Lorry ${esc(c.lorryNo || "-")}${c.gateInDate ? " &middot; Gate-in " + esc(fmtDate(c.gateInDate)) : ""}${c.scanStatus ? " &middot; Scan " + esc(c.scanStatus) : ""}</small></li>`).join("") + `</ul>`;
+  }
+  const f = d.freight;
+  if(f){
+    const lines = [
+      ["Freight", f.cnRatePerKg, f.cnRatePerKgA], ["T charges", f.cnTCharges, f.cnTChargesA], ["Surcharge", f.cnSurcharge, f.cnSurchargeA],
+      ["Hamali", f.cnHamali, f.cnHamaliA], ["Collection", f.cnCollectionCharges, f.cnCollectionChargesA], ["Delivery", f.cnDeliveryCharges, f.cnDeliveryChargesA],
+      ["Detention", f.cnDetentionCharges, f.cnDetentionChargesA], ["Logistics", f.cnLogisticsCharges, f.cnLogisticsChargesA],
+      ["Demurrage", f.cnDemurageCharges, f.cnDemurageChargesA], ["FOV", f.cnFov, f.cnFovA], ["COD / Other", f.cnCodOther, f.cnCodOtherA],
+      ["SGST", f.cnSgstRate, f.cnSgstRateA], ["CGST", f.cnCgstRate, f.cnCgstRateA], ["IGST", f.cnIgstRate, f.cnIgstRateA]
+    ].filter(l => l[2] != null);
+    h += `<h4>Freight</h4><div class="scroll"><table class="mini"><thead><tr><th>Item</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>` +
+      lines.map(l => `<tr><td>${esc(l[0])}</td><td class="num">${esc(l[1] ?? "")}</td><td class="num">${esc(l[2])}</td></tr>`).join("") +
+      `<tr><td><b>Total</b></td><td></td><td class="num"><b>${esc(f.cnTotalTotal ?? "")}</b></td></tr></tbody></table></div>`;
+  }
+  const inv = d.invoice || [];
+  if(inv.length){
+    h += `<h4>Invoices</h4><div class="scroll"><table class="mini"><thead><tr><th>Invoice</th><th>E-way bill</th><th>Valid till</th><th>Item</th><th class="num">Pkg</th><th class="num">Wt</th></tr></thead><tbody>` +
+      inv.map(i => `<tr><td>${esc(i.cnInvoiceNo)}</td><td>${esc(i.ewayBillNo)}</td><td>${esc(fmtDate(i.ewayBillValidDate))}</td><td>${esc(i.cnItemDescript)}</td><td class="num">${esc(i.cnPkg)}</td><td class="num">${esc(i.cnChargeWt)}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+  }
+  const urls = (d.uploadedInvoice && d.uploadedInvoice.invoiceUrls) || [];
+  if(urls.length){
+    h += `<h4>Uploaded invoice files</h4>` + urls.map((u, i) => `<div><a href="${esc(u)}" target="_blank" rel="noopener">Invoice file ${i + 1}</a></div>`).join("");
+  }
+  const allFlat = r.src === "old" ? r.flat : flatten(r.newData || d);
+  h += `<details class="raw"><summary>Saari fields (sab kuch)</summary><div class="grid" style="margin-top:10px">` +
+       Object.entries(allFlat).filter(([, v]) => v !== "").map(([k, v]) => kv(k, v)).join("") + `</div></details>`;
+  if(d.oldSections && d.oldSections.length){
+    h += `<details class="raw"><summary>Old API ki original tables</summary>` +
+      d.oldSections.map(([n, rows]) => `<h4>${esc(n)}</h4>${renderGeneric(rows)}`).join("") + `</details>`;
+  }
+  h += rawBlock(r.src === "old" ? r.json : (r.newData || d));
+  if(r.src === "both") h += `<details class="raw"><summary>Old API Raw JSON</summary><pre>${esc(JSON.stringify(r.oldJson, null, 2))}</pre></details>`;
+  return h;
+}
+
+/* ---------- SINGLE mode ---------- */
+async function singleSearch(){
+  const cn = extractCn($("#one").value);
+  const out = $("#singleOut");
+  out.hidden = false;
+  if(!cn){ out.innerHTML = `<div class="banner">Valid CN number daalo.</div>`; return; }
+  out.innerHTML = `<div class="info">CN ${esc(cn)} dhundh raha hoon...</div>`;
+  $("#oneBtn").disabled = true;
+  const r = await lookup(cn);
+  r.cn = cn;
+  $("#oneBtn").disabled = false;
+  if(r.state === "error" && r.net){
+    out.innerHTML = `<div class="banner">${esc(r.error)}. Internet check karo; internet theek hai to server ne CORS block kiya hoga. Claude ko batao, uska fix bana denge.</div>`;
+    return;
+  }
+  out.innerHTML = detailHtml(r);
+}
+
+/* ---------- BULK mode: loading CNs ---------- */
+function extractCn(v){
+  const m = String(v ?? "").trim().match(CN_RE);
+  return m ? m[0] : null;
+}
+function setCns(list, note){
+  const seen = new Set(), uniq = [];
+  let total = 0;
+  list.forEach(v => { const c = extractCn(v); if(!c) return; total++; if(!seen.has(c)){ seen.add(c); uniq.push(c); } });
+  cns = uniq;
+  results.clear();
+  $("#loadInfo").innerHTML = uniq.length
+    ? `<b>${uniq.length}</b> unique CN mile${total > uniq.length ? ` (${total - uniq.length} duplicate hata diye)` : ""}${note ? " &middot; " + esc(note) : ""}.`
+    : "Koi valid CN nahi mila. Column check karo (CN column me number hona chahiye).";
+  $("#startBtn").disabled = !uniq.length;
+  $("#retryBtn").disabled = true;
+  $("#corsBanner").hidden = true;
+  $("#resCard").hidden = true;
+}
+function loadFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{ workbook = XLSX.read(new Uint8Array(e.target.result), {type:"array"}); }
+    catch(err){ $("#loadInfo").textContent = "File read nahi ho payi: " + err.message; return; }
+    $("#sheetSel").innerHTML = workbook.SheetNames.map(n => `<option>${esc(n)}</option>`).join("");
+    $("#sheetBox").hidden = workbook.SheetNames.length <= 1;
+    parseSheet();
+  };
+  reader.readAsArrayBuffer(file);
+}
+function parseSheet(){
+  const ws = workbook.Sheets[$("#sheetSel").value];
+  sheetRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:""});
+  const width = sheetRows.reduce((m, r) => Math.max(m, r.length), 0);
+  const counts = Array(width).fill(0);
+  sheetRows.forEach(r => r.forEach((v, i) => { if(extractCn(v)) counts[i]++; }));
+  let best = 0;
+  counts.forEach((c, i) => { if(c > counts[best]) best = i; });
+  const header = sheetRows[0] || [];
+  $("#colSel").innerHTML = counts.map((c, i) => {
+    const h = String(header[i] ?? "").trim();
+    const name = h && !extractCn(h) ? h : `Column ${XLSX.utils.encode_col(i)}`;
+    return `<option value="${i}">${esc(name)} (${c} CN)</option>`;
+  }).join("");
+  $("#colSel").value = best;
+  $("#colBox").hidden = false;
+  pickColumn();
+}
+function pickColumn(){
+  const i = +$("#colSel").value;
+  setCns(sheetRows.map(r => r[i]), "Excel se");
+}
+
+/* ---------- BULK mode: running ---------- */
+async function run(list){
+  if(running || !list.length) return;
+  running = true; stopFlag = false;
+  $("#corsBanner").hidden = true;
+  list.forEach(cn => results.set(cn, {cn, state:"queued"}));
+  $("#resCard").hidden = false;
+  render();
+  const queue = [...list];
+  const conc = +$("#conc").value || 5;
+  async function worker(){
+    while(queue.length && !stopFlag){
+      const cn = queue.shift();
+      results.set(cn, {cn, state:"loading"});
+      const r = await lookup(cn);
+      r.cn = cn;
+      results.set(cn, r);
+      scheduleRender();
+    }
+  }
+  await Promise.all(Array.from({length:conc}, worker));
+  running = false;
+  render();
+  const finished = [...results.values()].filter(r => r.state === "ok" || r.state === "error");
+  if(finished.length && finished.every(r => r.state === "error" && r.net)){
+    const b = $("#corsBanner");
+    b.hidden = false;
+    b.textContent = "Saare requests network/CORS error se fail hue. Ya to internet band hai, ya server is page (file) se call block kar raha hai. Internet theek hai to Claude ko batao, proxy wala version bana denge.";
+  }
+}
+function syncButtons(){
+  $("#startBtn").disabled = running || !cns.length;
+  $("#stopBtn").disabled = !running;
+  const retryable = [...results.values()].some(r => r.state === "error" || r.state === "queued");
+  $("#retryBtn").disabled = running || !retryable;
+}
+
+/* ---------- BULK mode: rendering ---------- */
+let renderPending = false;
+function scheduleRender(){
+  if(renderPending) return;
+  renderPending = true;
+  setTimeout(() => { renderPending = false; render(); }, 250);
+}
+function render(){
+  syncButtons();
+  const all = cns.map(cn => results.get(cn) || {cn, state:"queued"});
+  const done = all.filter(r => r.state === "ok" || r.state === "error").length;
+  const pct = all.length ? Math.round(done / all.length * 100) : 0;
+  $("#progBar").style.width = pct + "%";
+  const okN = all.filter(r => r.state === "ok").length, oldN = all.filter(r => r.state === "ok" && r.src !== "new").length;
+  $("#progText").textContent = `${done} / ${all.length} complete (${pct}%) - ${okN} me data mila` + (oldN ? ` (${oldN} me Old API ka data)` : "") + (running ? " - chal raha hai..." : "");
+
+  const cnt = {all:all.length, delivered:0, transit:0, issue:0, other:0, error:0};
+  all.forEach(r => { const c = classify(r); if(c in cnt && c !== "all") cnt[c]++; });
+  const chipDefs = [["all","Sab"],["delivered","Delivered"],["transit","In transit"],["issue","Issue"],["other","Data mila"],["error","Failed"]]
+    .filter(([k]) => k === "all" || k === "delivered" || k === "transit" || k === "error" || cnt[k] > 0 || filter === k);
+  $("#chips").innerHTML = chipDefs.map(([k, l]) =>
+    `<button type="button" class="chip ${filter === k ? "on" : ""}" data-f="${k}">${l} <b>${cnt[k]}</b></button>`).join("");
+
+  let billed = 0, unbilled = 0;
+  all.forEach(r => { if(r.state === "ok"){ hasBill(r.data) ? billed++ : unbilled++; } });
+  $("#billChips").innerHTML = [["all","Bill: Sab",all.length],["billed","Bill mila",billed],["unbilled","Bill nahi",unbilled]].map(([k, l, n]) =>
+    `<button type="button" class="chip ${billF === k ? "on" : ""}" data-b="${k}">${l} <b>${n}</b></button>`).join("");
+
+  const cols = COLS.filter(c => visible.has(c.k));
+  let rows = all.filter(passes);
+  if(sortKey){
+    const col = COLS.find(c => c.k === sortKey);
+    const sv = r => col.dt ? String(dateKey(cellValue(r, col))) : String(cellValue(r, col));   // date column chronological sort
+    rows = rows.slice().sort((a, b) => {
+      const r = sv(a).localeCompare(sv(b), undefined, {numeric:true});
+      return sortDesc ? -r : r;
+    });
+  }
+  $("#tbl thead").innerHTML = "<tr>" + cols.map(c =>
+    `<th data-k="${c.k}" class="${sortKey === c.k ? "sorted" + (sortDesc ? " desc" : "") : ""} ${c.cls === "num" ? "num" : ""}">${esc(c.label)}</th>`).join("") + "</tr>";
+  if(!rows.length){
+    $("#tbl tbody").innerHTML = `<tr><td colspan="${cols.length}" class="empty">Is filter me koi row nahi hai.</td></tr>`;
+    return;
+  }
+  $("#tbl tbody").innerHTML = rows.map(r => {
+    const cls = classify(r);
+    const tds = cols.map(c => {
+      const v = cellValue(r, c);
+      if(c.k === "status") return `<td><span class="badge b-${cls}" title="${esc(v)}">${esc(v)}</span></td>`;
+      if(c.k === "src") return `<td>${v ? `<span class="src">${esc(v)}</span>` : ""}</td>`;
+      if(r.state === "ok" && (c.k === "billNo" || c.k === "billStat")){
+        const billed = hasBill(r.data);
+        if(billed) return `<td class="cn"><span class="badge b-delivered">${esc(c.k === "billNo" ? v : "Billed")}</span></td>`;
+        return `<td><span class="badge ${cls === "delivered" ? "b-transit" : "b-other"}">${cls === "delivered" ? "Bill nahi" : "Pending"}</span></td>`;
+      }
+      return `<td class="${c.cls || ""}">${esc(v)}</td>`;
+    }).join("");
+    return `<tr data-cn="${esc(r.cn)}" class="${r.state === "ok" || r.state === "error" ? "clickable" : ""}">${tds}</tr>`;
+  }).join("");
+}
+
+function showDetail(cn){
+  const r = results.get(cn);
+  if(!r || (r.state !== "ok" && r.state !== "error")) return;
+  $("#dTitle").textContent = "CN " + cn;
+  $("#dBody").innerHTML = detailHtml(r);
+  $("#dlg").showModal();
+}
+
+/* ---------- export ---------- */
+/* ---------- colourful Excel export ---------- */
+const GROUPS = [
+  {name:"Bill / CN",       hd:"1F4E79", t1:"DDEBF7", t2:"EEF5FB", keys:["cn","billNo","billDate","remarks","cnDate"]},
+  {name:"Party",           hd:"6B3FA0", t1:"E9DDF5", t2:"F4EEFA", keys:["partyCode","partyName"]},
+  {name:"Route",           hd:"0F766E", t1:"D5EFEC", t2:"EAF7F5", keys:["srcCode","srcBranch","dstCode","dstBranch"]},
+  {name:"Consignor/Consignee", hd:"C2570C", t1:"FCE4D0", t2:"FEF1E7", keys:["cngrCode","cngrName","cngeCode","cngeName"]},
+  {name:"Status / Mode",   hd:"2563EB", t1:"DCE7FB", t2:"EDF3FD", keys:["status","bmode","fmode"]},
+  {name:"Load & Value",    hd:"2E7D32", t1:"DCEFDC", t2:"EDF7ED", keys:["pkg","gross","net","wt","aWt"]},
+  {name:"Freight",         hd:"A21CAF", t1:"F6DCF8", t2:"FBEDFC", keys:["freight","rate","fov"]},
+  {name:"Delivery",        hd:"475569", t1:"E2E8F0", t2:"F1F5F9", keys:["ddr","lorry","delDate","lorryType"]},
+  {name:"Extra Info",      hd:"9A3412", t1:"FFEDD5", t2:"FFF7ED", keys:["billAmt","billStat","billSrc","podDate","tat","invNo","eway","src"]}
+];
+const STATUS_STYLE = {
+  delivered:{bg:"C6EFCE", fg:"006100"}, transit:{bg:"FFEB9C", fg:"7A4B00"},
+  issue:{bg:"FFC7CE", fg:"9C0006"}, other:{bg:"E5E7EB", fg:"374151"}
+};
+const BILL_STYLE = {ok:{bg:"C6EFCE", fg:"006100"}, no:{bg:"FFC7A8", fg:"8A2A00"}, na:{bg:"E5E7EB", fg:"374151"}};
+function groupOf(k){ return GROUPS.find(g => g.keys.includes(k)) || GROUPS[0]; }
+function saveBlob(buf, name){
+  const url = URL.createObjectURL(new Blob([buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+function fileStamp(){
+  const t = new Date();
+  return `CN_Status_${t.getFullYear()}${pad(t.getMonth()+1)}${pad(t.getDate())}_${pad(t.getHours())}${pad(t.getMinutes())}.xlsx`;
+}
+const exportCols = () => COLS.filter(c => !c.extra || $("#extraCols").checked);
+/* Excel me date real date-cell bane (filter/sort sahi chale); baaki jaisa hai */
+function xlValue(r, c){
+  const v = cellValue(r, c);
+  if(v === "" || v == null) return null;
+  if(c.dt && typeof v === "string"){
+    const m = v.match(/^(\d{2})-(\d{2})-(\d{4})(?: (\d{2}):(\d{2}))?$/);
+    if(m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)));
+  }
+  return v;
+}
+function addSummarySheet(wb, ok, bad, total){
+  const ws = wb.addWorksheet("Summary");
+  ws.columns = [{width:36},{width:16},{width:16},{width:18},{width:20},{width:20}];
+  const cnt = {delivered:0, transit:0, issue:0, other:0};
+  ok.forEach(r => cnt[classify(r)]++);
+  const billed = ok.filter(r => hasBill(r.data)), unb = ok.filter(r => !hasBill(r.data));
+  const unbDel = unb.filter(r => classify(r) === "delivered");
+  const freightCol = COLS.find(c => c.k === "freight");
+  const fr = r => parseFloat(cellValue(r, freightCol)) || 0;
+  const sum = (arr, f) => round2(arr.reduce((a, r) => a + (f(r) || 0), 0));
+  const billAmt = r => parseFloat(r.data.bill && r.data.bill.total) || 0;
+  const items = [
+    ["Report time", new Date().toLocaleString("en-GB")], ["Total CN", total], ["Data mila", ok.length], ["Failed", bad.length],
+    ["Delivered", cnt.delivered], ["In transit", cnt.transit], ["Issue", cnt.issue],
+    ["Bill bana hua", billed.length], ["Bill nahi (total)", unb.length], ["Delivered hai par bill nahi", unbDel.length],
+    ["Total Bill Amount", sum(billed, billAmt)], ["Total Freight", sum(ok, fr)]
+  ];
+  const hd = (cell, argb) => { cell.font = {bold:true, color:{argb:"FFFFFFFF"}}; cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb}}; cell.alignment = {horizontal:"center"}; };
+  ws.mergeCells("A1:B1"); ws.getCell("A1").value = "CN Report Summary"; hd(ws.getCell("A1"), "FF1F4E79");
+  items.forEach(([k, v], i) => {
+    const row = ws.getRow(i + 2);
+    row.getCell(1).value = k; row.getCell(1).font = {bold:true};
+    const c = row.getCell(2); c.value = v; c.alignment = {horizontal:"right"};
+    if(/Amount|Freight/.test(k)) c.numFmt = MONEY;
+    if(k === "Delivered hai par bill nahi" && v > 0){ c.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + BILL_STYLE.no.bg}}; c.font = {bold:true, color:{argb:"FF" + BILL_STYLE.no.fg}}; }
+    if(k === "Bill bana hua"){ c.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + BILL_STYLE.ok.bg}}; c.font = {bold:true, color:{argb:"FF" + BILL_STYLE.ok.fg}}; }
+  });
+  // party-wise
+  const pn = COLS.find(c => c.k === "partyName"), by = new Map();
+  ok.forEach(r => {
+    const n = String(cellValue(r, pn) || "(party nahi)");
+    const o = by.get(n) || {n:0, b:0, u:0, f:0, ba:0};
+    o.n++; hasBill(r.data) ? o.b++ : o.u++; o.f += fr(r); o.ba += billAmt(r);
+    by.set(n, o);
+  });
+  let rw = items.length + 4;
+  ws.getRow(rw).values = ["Party", "CN", "Bill bana", "Bill nahi", "Freight Total", "Bill Amount"];
+  for(let i = 1; i <= 6; i++) hd(ws.getRow(rw).getCell(i), "FF6B3FA0");
+  [...by.entries()].sort((a, b) => b[1].n - a[1].n).forEach(([n, o]) => {
+    rw++;
+    const row = ws.getRow(rw);
+    row.values = [n, o.n, o.b, o.u, round2(o.f), round2(o.ba)];
+    row.getCell(5).numFmt = MONEY; row.getCell(6).numFmt = MONEY;
+    if(o.u) row.getCell(4).font = {bold:true, color:{argb:"FF" + BILL_STYLE.no.fg}};
+  });
+  const longest = Math.max(36, ...[...by.keys()].map(n => n.length + 3));
+  ws.getColumn(1).width = Math.min(longest, 60);
+}
+async function exportExcel(){
+  const rows = cns.map(cn => results.get(cn)).filter(Boolean).filter(passes);
+  if(!rows.length){ alert("Export ke liye koi row nahi hai."); return; }
+  const ok = rows.filter(r => r.state === "ok");
+  const bad = rows.filter(r => r.state === "error");
+  const XC = exportCols();
+  if(typeof ExcelJS === "undefined"){ exportPlain(ok, bad, XC); return; }   // colour library load na ho to plain Excel
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Success Report", {views:[{state:"frozen", xSplit:1, ySplit:2}]});
+  const thin = {style:"thin", color:{argb:"FFBFC7D2"}};
+  const border = {top:thin, left:thin, bottom:thin, right:thin};
+
+  // Row 1: group band, Row 2: column headers
+  const groupRow = ws.getRow(1), headRow = ws.getRow(2);
+  XC.forEach((c, i) => {
+    const g = groupOf(c.k), col = i + 1;
+    ws.getColumn(col).width = c.cls === "long" ? 42 : Math.max(c.label.length + 4, ["srcBranch","dstBranch","partyName","cngrName","cngeName"].includes(c.k) ? 30 : (c.k === "billNo" || c.k === "cn" || c.k === "invNo" || c.k === "eway") ? 20 : 14);
+    const h = headRow.getCell(col);
+    h.value = c.label;
+    h.font = {bold:true, color:{argb:"FFFFFFFF"}, size:11};
+    h.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + g.hd}};
+    h.alignment = {vertical:"middle", horizontal:"center", wrapText:true};
+    h.border = border;
+  });
+  GROUPS.forEach(g => {
+    const idx = XC.map((c, i) => g.keys.includes(c.k) ? i + 1 : 0).filter(Boolean);
+    if(!idx.length) return;
+    const from = Math.min(...idx), to = Math.max(...idx);
+    if(to > from) ws.mergeCells(1, from, 1, to);
+    const cell = groupRow.getCell(from);
+    cell.value = g.name;
+    cell.font = {bold:true, color:{argb:"FFFFFFFF"}, size:10};
+    cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + g.hd}};
+    cell.alignment = {horizontal:"center", vertical:"middle"};
+  });
+  groupRow.height = 18; headRow.height = 30;
+
+  ok.forEach((r, ri) => {
+    const row = ws.addRow(XC.map(c => xlValue(r, c)));
+    const cls = classify(r), billed = hasBill(r.data);
+    XC.forEach((c, i) => {
+      const g = groupOf(c.k), cell = row.getCell(i + 1);
+      const tint = ri % 2 ? g.t2 : g.t1;
+      cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + tint}};
+      cell.border = border;
+      cell.font = {color:{argb:"FF1F2937"}};
+      cell.alignment = {vertical:"middle", horizontal: (c.cls === "num" || typeof cell.value === "number" || cell.value instanceof Date) ? "right" : "left", wrapText: c.cls === "long"};
+      if(c.dt) cell.numFmt = c.dt === "dt" ? "dd-mm-yyyy hh:mm" : "dd-mm-yyyy";
+      else if(c.fmt && typeof cell.value === "number") cell.numFmt = c.fmt;
+      if(c.k === "cn") cell.font = {bold:true, color:{argb:"FF" + g.hd}};
+      if(c.k === "status"){
+        const st = STATUS_STYLE[cls] || STATUS_STYLE.other;
+        cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + st.bg}};
+        cell.font = {bold:true, color:{argb:"FF" + st.fg}};
+      }
+      if(c.k === "billNo" || c.k === "billDate" || c.k === "billAmt" || c.k === "billStat"){   // bill columns: green = bill bana, orange = delivered par bill nahi
+        const st = billed ? BILL_STYLE.ok : (cls === "delivered" ? BILL_STYLE.no : BILL_STYLE.na);
+        cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF" + st.bg}};
+        cell.font = {bold:true, color:{argb:"FF" + st.fg}};
+      }
+    });
+  });
+  // Auto-fit: har column ki chaudai uske asli data (aur header) ke hisaab se
+  XC.forEach((c, i) => {
+    let len = c.label.length + 2;                                   // header bold hai
+    for(let r = 3; r <= ws.rowCount; r++){
+      const v = ws.getRow(r).getCell(i + 1).value;
+      if(v == null || v === "") continue;
+      let n;
+      if(v instanceof Date) n = c.dt === "dt" ? 16 : 10;
+      else if(typeof v === "number") n = c.fmt === MONEY ? v.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2}).length : String(v).length;
+      else n = String(v).length;
+      if(["cn","billNo","billDate","billAmt","billStat","status"].includes(c.k)) n = Math.ceil(n * 1.15);   // bold text thoda chauda
+      len = Math.max(len, n);
+    }
+    ws.getColumn(i + 1).width = Math.min(Math.max(len + 3, 10), c.cls === "long" ? 60 : 70);
+  });
+  ws.autoFilter = {from:{row:2, column:1}, to:{row:2, column:XC.length}};
+
+  addSummarySheet(wb, ok, bad, rows.length);
+
+  if(bad.length){
+    const wf = wb.addWorksheet("Failed");
+    wf.columns = [{header:"CN", key:"cn", width:20}, {header:"Error", key:"err", width:80}];
+    wf.getRow(1).eachCell(c => {
+      c.font = {bold:true, color:{argb:"FFFFFFFF"}};
+      c.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FFB91C1C"}};
+    });
+    bad.forEach(r => {
+      const row = wf.addRow({cn:r.cn, err:r.error});
+      row.eachCell(c => { c.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FFFEE2E2"}}; c.border = border; });
+    });
+    wf.getColumn(2).width = Math.min(Math.max(30, ...bad.map(r => String(r.error || "").length + 3)), 110);
+  }
+  saveBlob(await wb.xlsx.writeBuffer(), fileStamp());
+}
+function exportPlain(ok, bad, XC){
+  XC = XC || exportCols();
+  const main = ok.map(r => { const o = {}; XC.forEach(c => { const v = cellValue(r, c); o[c.label] = v === "" ? null : v; }); return o; });
+  const ws = XLSX.utils.json_to_sheet(main, {header: XC.map(c => c.label)});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Success Report");
+  if(bad.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bad.map(r => ({"CN": r.cn, "Error": r.error}))), "Failed");
+  XLSX.writeFile(wb, fileStamp());
+}
+function downloadTemplate(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["CN No"], ["5723261001502"], ["1308251024203"]]), "CN");
+  XLSX.writeFile(wb, "CN_sample.xlsx");
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b));
+  const bulk = b.dataset.tab === "bulk";
+  $("#pane-single").hidden = bulk;
+  $("#pane-bulk").hidden = !bulk;
+}));
+$("#oneBtn").addEventListener("click", singleSearch);
+$("#one").addEventListener("keydown", e => { if(e.key === "Enter") singleSearch(); });
+
+const drop = $("#drop"), fileInput = $("#file");
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fileInput.click(); } });
+fileInput.addEventListener("change", () => { if(fileInput.files[0]) loadFile(fileInput.files[0]); fileInput.value = ""; });
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if(f) loadFile(f); });
+
+$("#sheetSel").addEventListener("change", parseSheet);
+$("#colSel").addEventListener("change", pickColumn);
+$("#pasteBtn").addEventListener("click", () => {
+  $("#sheetBox").hidden = true; $("#colBox").hidden = true;
+  setCns($("#paste").value.split(/[\s,;]+/), "paste se");
+});
+$("#tplBtn").addEventListener("click", downloadTemplate);
+$("#startBtn").addEventListener("click", () => { results.clear(); run(cns); });
+$("#stopBtn").addEventListener("click", () => { stopFlag = true; });
+$("#retryBtn").addEventListener("click", () => {
+  run(cns.filter(cn => { const r = results.get(cn); return r && (r.state === "error" || r.state === "queued"); }));
+});
+$("#exportBtn").addEventListener("click", exportExcel);
+$("#q").addEventListener("input", e => { query = e.target.value; render(); });
+$("#chips").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if(b){ filter = b.dataset.f; render(); } });
+$("#tbl thead").addEventListener("click", e => {
+  const th = e.target.closest("th"); if(!th) return;
+  const k = th.dataset.k;
+  if(sortKey === k){ if(sortDesc){ sortKey = null; sortDesc = false; } else sortDesc = true; }
+  else { sortKey = k; sortDesc = false; }
+  render();
+});
+$("#tbl tbody").addEventListener("click", e => { const tr = e.target.closest("tr.clickable"); if(tr) showDetail(tr.dataset.cn); });
+$("#dClose").addEventListener("click", () => $("#dlg").close());
+$("#dlg").addEventListener("click", e => { if(e.target === $("#dlg")) $("#dlg").close(); });
+
+visible.add("cn");
+$("#colMenu").innerHTML = COLS.filter(c => c.k !== "cn").map(c =>
+  `<label><input type="checkbox" data-c="${c.k}" ${visible.has(c.k) ? "checked" : ""}> ${esc(c.label)}</label>`).join("");
+$("#colMenu").addEventListener("change", e => {
+  const k = e.target.dataset.c; if(!k) return;
+  e.target.checked ? visible.add(k) : visible.delete(k);
+  render();
+});
+$("#billChips").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if(b){ billF = b.dataset.b; render(); } });
+function legacyCopy(t, cb){
+  const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); cb(); }catch(e){}
+  ta.remove();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]"); if(!b) return;
+  const txt = b.dataset.copy, done = () => { const o = b.textContent; b.textContent = "Copied"; setTimeout(() => { b.textContent = o; }, 1200); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => legacyCopy(txt, done));
+  else legacyCopy(txt, done);
+});
+</script>
+</body>
+</html>

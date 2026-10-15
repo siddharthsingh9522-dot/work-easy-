@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Audit log · {{ app_name }}{% endblock %}
+{% block page_title %}Audit log{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Audit log</h2><p>Login, signup aur admin actions (latest 200).</p></div><a class="btn ghost" href="{{ url_for('admin.users') }}">← Users</a></div>
+<div class="card" style="padding:0"><div class="table-wrap"><table class="tbl">
+<thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+{% for e in events %}<tr><td class="muted small mono">{{ e.ts|int|timestamp }}</td><td>{{ e.actor }}</td><td><span class="chip">{{ e.action }}</span></td><td class="muted small">{{ e.detail }}</td></tr>
+{% else %}<tr><td colspan="4" class="empty">Abhi koi event nahi.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

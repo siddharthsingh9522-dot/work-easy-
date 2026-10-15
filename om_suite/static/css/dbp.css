@@ -1,0 +1,40 @@
+/* DBP tools - small additions on top of the shared design tokens */
+.form-row{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+.form-row .field{margin:0 0 .5rem}.field.grow{flex:1 1 200px}.field.grow2{flex:2 1 320px}
+.field input[type=file]{padding:.5rem;background:var(--surface-2)}
+textarea.input{display:block;width:100%;margin-top:.3rem;padding:.6rem .75rem;border:1px solid var(--border);border-radius:9px;font:inherit;background:var(--surface);color:var(--ink)}
+label.check{display:flex;gap:.5rem;align-items:center;font-size:.88rem;margin:.3rem 0;color:var(--ink)}
+.kpis{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem;box-shadow:var(--shadow)}
+.kpi-l{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+.kpi-v{font-family:var(--font-head);font-size:1.6rem;font-weight:700;color:var(--ink);margin-top:.1rem}
+.bars{display:grid;gap:.45rem}.bar-row{display:grid;grid-template-columns:minmax(120px,260px) 1fr 70px;gap:.7rem;align-items:center;font-size:.88rem}
+.bar{height:10px;background:var(--surface-2);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.bar-row b{text-align:right}.bar-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1rem}
+.tab{padding:.45rem .9rem;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--ink-soft);font-size:.88rem;font-weight:600;text-decoration:none!important}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.period{display:flex;gap:.5rem;align-items:center}.period select.input{margin:0;width:auto}
+/* data tables produced by pandas */
+table.tbl.dbp{font-size:.82rem;border-collapse:separate;border-spacing:0;width:100%}
+.dbp thead th{position:sticky;top:0;background:var(--header-bg);color:var(--header-ink);text-transform:none;letter-spacing:0;font-size:.78rem;padding:.5rem .6rem;white-space:nowrap;border-bottom:0}
+.dbp td{padding:.4rem .6rem;border-bottom:1px solid var(--border);white-space:nowrap}
+.dbp tbody tr:nth-child(even){background:#F8FAFD}.dbp tbody tr:hover{background:var(--accent-soft)}
+.dbp tbody tr:last-child td{font-weight:700;background:var(--total-bg)}
+.dbp td:first-child,.dbp th:first-child{position:sticky;left:0}
+.table-wrap{max-height:70vh}
+.issue{border:1px solid var(--border);border-left-width:5px;background:var(--surface);border-radius:var(--radius);padding:.7rem .9rem;margin-bottom:.7rem}
+.issue pre{margin:.5rem 0 0;white-space:pre-wrap;word-break:break-word;font-family:var(--font-mono);font-size:.8rem;color:var(--ink-soft)}
+.sev-high{border-left-color:var(--danger)}.sev-medium{border-left-color:#EA8A00}.sev-low{border-left-color:#E5B800}.sev-info{border-left-color:var(--success)}
+.pill.sev{background:var(--surface-2)}
+.audit-row{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.88rem}
+.audit-row:last-of-type{border-bottom:0}
+/* chatbot */
+.quick{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem}
+.chat{min-height:260px;max-height:62vh;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding:1rem}
+.msg{display:flex}.msg.user{justify-content:flex-end}
+.bubble{max-width:min(760px,92%);padding:.6rem .85rem;border-radius:14px;font-size:.92rem;line-height:1.5;white-space:normal;word-break:break-word}
+.msg.user .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.assistant .bubble{background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.assistant .bubble hr{border:0;border-top:1px solid var(--border);margin:.6rem 0}
+.chat-in{display:flex;gap:.6rem;margin-top:.8rem}.chat-in input{margin:0;flex:1}

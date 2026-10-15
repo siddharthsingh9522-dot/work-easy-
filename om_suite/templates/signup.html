@@ -1,0 +1,15 @@
+{% extends "auth_base.html" %}
+{% block title %}Signup{% endblock %}
+{% block body %}
+<h1>Naya account</h1>
+<p class="sub">Admin approval ke baad aap login kar payenge.</p>
+<form method="post" action="{{ url_for('auth.signup') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="field">Full name<input type="text" name="name" value="{{ name }}" required maxlength="60" autocomplete="name"></label>
+  <label class="field">Email<input type="email" name="email" value="{{ email }}" required autocomplete="username"></label>
+  <label class="field">Password (min 8 characters)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+  <label class="field">Confirm password<input type="password" name="confirm" required minlength="8" autocomplete="new-password"></label>
+  <button class="btn block" type="submit">Create account</button>
+</form>
+<p class="auth-alt">Pehle se account hai? <a href="{{ url_for('auth.login') }}">Login</a></p>
+{% endblock %}

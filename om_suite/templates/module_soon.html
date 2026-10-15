@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ m.name }} · {{ app_name }}{% endblock %}
+{% block page_title %}{{ m.name }}{% endblock %}
+{% block content %}
+<div class="card soon-box" style="max-width:720px">
+  {% if pending_link %}
+    <span class="pill warn">Link pending</span>
+    <h2 style="margin:.6rem 0 .3rem">{{ m.name }}</h2>
+    <p class="muted">Ye ek alag app hai (apna login). Admin ko deployment ka URL <code>GR_AUTO_URL</code> environment variable me set karna hai - uske baad ye tile seedha khulega.</p>
+  {% else %}
+    <span class="pill soon">Phase {{ m.phase }} - jaldi aa raha hai</span>
+    <h2 style="margin:.6rem 0 .3rem">{{ m.name }}</h2>
+    <p class="muted">{{ m.desc }}</p>
+    {% if m.planned %}<p style="margin:1rem 0 0"><b>Isme ye features aayenge:</b></p><ul>{% for p in m.planned %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
+  <p style="margin-top:1.2rem"><a class="btn ghost" href="{{ url_for('main.dashboard') }}">← Dashboard</a></p>
+</div>
+{% endblock %}

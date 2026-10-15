@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ cfg.label }} · {{ app_name }}{% endblock %}
+{% block page_title %}{{ cfg.label }}{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/flows.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h2>{{ cfg.label }}</h2>
+  <p>{% if slug == 'tbb' %}TBB report upload karo → har branch ko uske GR ki list ke saath mail.{% elif slug == 'bill' %}Bill report upload karo → har branch ko uske generated bills ki list ke saath mail.{% else %}Purani mail ka format aur naya data sheet do → har branch/group ke liye mail banti hai.{% endif %}</p></div>
+  <a class="btn ghost" href="{{ url_for('flows.history') }}">📜 Sent / queue history</a></div>
+
+{% if has %}<div class="flash ok">Pichla data loaded hai ({{ source }}). <a href="{{ url_for('flows.preview', slug=slug) }}"><b>Preview kholein →</b></a> ya naya upload karke badlein (jo mails SENT hain wo dobara nahi bheji jayengi).</div>{% endif %}
+{% if slug != 'previous' and not dir_ok %}<div class="flash warn">Directory load nahi hai. {% if user.role == 'admin' %}<a href="{{ url_for('dbp.directory') }}">Directory & Masters</a> se upload karein.{% else %}Admin se directory update karwayein.{% endif %}</div>{% endif %}
+
+{% if slug == 'previous' %}
+<form class="card" method="post" action="{{ url_for('flows.previous_analyze') }}" enctype="multipart/form-data" data-busy="Files padhi ja rahi hain…">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h3 style="margin-bottom:.6rem">1️⃣ Purani mail (format)</h3>
+  <label class="field">Purani mail ka .eml upload karein <span class="muted small">(ya neeche manually likhein)</span><input type="file" name="eml_file" accept=".eml"></label>
+  <details class="manage"><summary>Ya manually: To / CC / BCC / Subject / Body</summary><div class="manage-panel">
+    <div class="form-row"><label class="field grow">To<input name="old_to"></label><label class="field grow">CC<input name="old_cc"></label><label class="field grow">BCC<input name="old_bcc"></label></div>
+    <label class="field">Subject<input name="old_subject"></label><label class="field">Body<textarea class="input" name="old_body" rows="6"></textarea></label></div></details>
+  <h3 style="margin:1rem 0 .6rem">2️⃣ Naya data sheet</h3>
+  <label class="field">Excel / CSV (.xls .xlsx .csv) — koi bhi columns<input type="file" name="data_file" accept=".xls,.xlsx,.csv" required></label>
+  <p class="muted small">{% if ai_on %}AI purani mail ko <code>{{ '{{Column}}' }}</code> template me badlega (aap review karoge).{% else %}AI configure nahi hai — purani mail copy hogi, aap review page par <code>{{ '{{Column}}' }}</code> placeholders khud lagaoge.{% endif %}</p>
+  <button class="btn" type="submit">Analyze →</button>
+  {% if draft %}<a class="btn ghost" href="{{ url_for('flows.previous_review') }}" style="margin-left:.5rem">Pichla draft kholein</a>{% endif %}
+</form>
+{% else %}
+<form class="card" method="post" action="{{ url_for('flows.upload', slug=slug) }}" enctype="multipart/form-data" data-busy="Report padhi ja rahi hai…">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="field">{{ 'TBB / GR report' if slug == 'tbb' else 'Bill generated report' }} (.xls / .xlsx)<input type="file" name="report_file" accept=".xls,.xlsx" required></label>
+  <p class="muted small">Recipients company directory se aate hain ({{ 'Incharge / Billing / Delivery / DBP' if slug == 'tbb' else 'Branch Manager / Incharge' }}); wahi file jo admin <i>Directory & Masters</i> me rakhta hai.</p>
+  <button class="btn" type="submit">Upload & preview →</button>
+</form>
+{% endif %}
+<p class="muted small" style="margin-top:1rem">Bhejne ke 2 tareeke: <b>Thunderbird</b> (aapke apne account se; <a href="{{ url_for('mail.bridge') }}">setup</a>) ya <b>SMTP</b> (<a href="{{ url_for('main.settings') }}">Settings</a>). Test mode default ON.</p>
+{% endblock %}

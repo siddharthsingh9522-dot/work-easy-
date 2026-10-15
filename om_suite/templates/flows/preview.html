@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ cfg.label }} preview · {{ app_name }}{% endblock %}
+{% block page_title %}{{ cfg.label }}{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/flows.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>{{ cfg.label }} — preview</h2><p>Source: {{ source }} · recipients check karo, <b>Confirm</b> karo, phir bhejo. Jo SENT hai wo dobara nahi jayegi.</p></div>
+  <div class="row-actions"><a class="btn ghost" href="{{ url_for('flows.history') }}">📜 History</a><a class="btn ghost" href="{{ url_for('flows.' ~ slug ~ '_index') }}">⬆ Naya upload</a></div></div>
+
+<div class="kpis" id="kpis">
+  {% for k, label in [('generated','Generated'),('draft','Draft'),('queued','Queued'),('sending','Sending'),('sent','Sent'),('failed','Failed'),('skipped','Skipped')] %}
+  <div class="kpi"><div class="kpi-l">{{ label }}</div><div class="kpi-v" data-k="{{ k }}">{{ counts[k] }}</div></div>{% endfor %}
+</div>
+
+<div class="card flow-controls" id="flow" data-base="{{ url_for('flows.api_status', slug=slug).rsplit('/status', 1)[0] }}" data-ai="{{ 1 if ai_on else 0 }}" data-slug="{{ slug }}">
+  <div class="form-row" style="align-items:center">
+    <label class="check"><input type="checkbox" id="testOn" checked> 🧪 <b>Test mode</b> (mails sirf test address par; rows ka status nahi badlega)</label>
+    <label class="field" style="margin:0;min-width:240px" id="testBox"><input type="email" id="testTo" value="{{ default_test_to }}" placeholder="test@company.com"></label>
+    <label class="check"><input type="radio" name="via" value="tb" checked> Thunderbird</label>
+    <label class="check"><input type="radio" name="via" value="smtp" {{ 'disabled' if not smtp_ok }}> SMTP{% if not smtp_ok %} <span class="muted small">(<a href="{{ url_for('main.settings') }}">Settings</a>)</span>{% endif %}</label>
+  </div>
+  <div class="row-actions" style="margin-top:.7rem">
+    <button class="btn ghost sm" id="selAll" type="button">Select all</button><button class="btn ghost sm" id="selNone" type="button">Select none</button>
+    <button class="btn sm" id="confirm" type="button">✅ Confirm selection</button>
+    <button class="btn ghost sm" id="reviewAll" type="button">☑ Mark all with email as Reviewed</button>
+    <button class="btn sm" id="sendAll" type="button">🚀 Send all (queued + reviewed)</button>
+    <button class="btn ghost sm" id="retry" type="button">🔁 Retry failed</button>
+  </div>
+  {% if not ai_on %}<p class="muted small" style="margin:.6rem 0 0">AI check configure nahi hai. Har row ko khud check karke <b>Reviewed</b> mark karein — sirf reviewed + queued rows "Send all" me jaate hain.</p>{% endif %}
+  <div id="msg" class="muted small" style="margin-top:.5rem"></div>
+</div>
+
+<div class="card" style="padding:0;margin-top:1rem"><div class="table-wrap"><table class="tbl dbp flow-table"><thead><tr>
+  <th></th><th>{{ 'B.CODE' if slug != 'previous' else 'Group' }}</th><th>{{ 'Branch' if slug != 'previous' else 'Subject' }}</th><th>{{ cfg.item }}s</th><th>To</th><th>CC</th><th>BCC</th><th>Review</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for r in rows %}
+<tr data-code="{{ r.code }}">
+  <td><input type="checkbox" class="sel" {{ 'checked' if r.selected }} {{ 'disabled' if r.status != 'DRAFT' }}></td>
+  <td><b>{{ r.code }}</b></td>
+  <td>{{ r.name }}{% if r.region %}<div class="muted small">{{ r.region }}</div>{% endif %}{% if r.contact %}<div class="muted small">{{ r.contact }}{% if r.designation %} · {{ r.designation }}{% endif %}</div>{% endif %}</td>
+  <td title="{{ r.sample|join(' | ') }}">{{ r.items }}</td>
+  <td><input class="em" value="{{ r.email }}" {{ 'readonly' if r.status == 'SENT' }}></td>
+  <td><input class="cc" value="{{ r.cc }}" {{ 'readonly' if r.status == 'SENT' }}></td>
+  <td><input class="bcc" value="{{ r.bcc }}" {{ 'readonly' if r.status == 'SENT' }}></td>
+  <td class="rv"><span class="pill {{ {'ok':'live','manual_ok':'live','review':'warn','missing':'blocked','ai_error':'blocked'}.get(r.review, '') }}">{{ {'manual_ok':'reviewed'}.get(r.review, r.review) }}</span><div class="muted small rs">{{ r.reason }}</div></td>
+  <td class="st"><span class="pill {{ {'SENT':'live','FAILED':'blocked','SKIPPED':'warn','SENDING':'soon','QUEUED':'soon'}.get(r.status, '') }}">{{ r.status }}</span><div class="muted small er">{{ r.error }}</div></td>
+  <td class="act"><div class="row-actions">
+    <button type="button" class="btn ghost sm a-view">👁</button>
+    {% if ai_on %}<button type="button" class="btn ghost sm a-ai">🤖</button>{% if slug != 'previous' %}<button type="button" class="btn ghost sm a-fix">🛠</button>{% endif %}{% endif %}
+    <button type="button" class="btn ghost sm a-rev" title="Maine check kar liya">✔</button>
+    {% if slug == 'previous' %}<button type="button" class="btn ghost sm a-find" title="Thunderbird Sent folder se purane recipients dhoondo">🔎</button>{% endif %}
+    <button type="button" class="btn sm a-send">Send</button></div></td>
+</tr>{% endfor %}
+</tbody></table></div></div>
+
+<dialog id="viewer"><div class="viewer-head"><b id="vSubject"></b><button type="button" class="btn ghost sm" id="vClose">✕</button></div>
+  <div class="muted small" id="vAtt"></div><iframe id="vFrame" sandbox></iframe><pre id="vText" class="plain" hidden></pre></dialog>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/flows.js') }}"></script>{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Month-wise Summary · {{ app_name }}{% endblock %}
+{% block page_title %}Month-wise Summary{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% macro period_form(which, label, default_month) %}
+  <div class="period"><b>{{ label }}</b>
+    <select name="month_{{ which }}" class="input">{% for m in range(1, 13) %}<option value="{{ m }}" {{ 'selected' if m == now.month }}>{{ ['January','February','March','April','May','June','July','August','September','October','November','December'][m-1] }}</option>{% endfor %}</select>
+    <select name="year_{{ which }}" class="input">{% for y in [now.year - 1, now.year] %}<option value="{{ y }}" {{ 'selected' if y == now.year }}>{{ y }}</option>{% endfor %}</select></div>
+{% endmacro %}
+{% block content %}
+<div class="page-head"><div><h2>Month-wise Summary</h2><p>ADR (Pending Billing) ya NET (POD on NET) ka raw data upload karo → branch × month pending matrix, bilkul SUMMARY jaisa format.</p></div></div>
+<div class="tabs">{% for k, c in cats.items() %}<a class="tab {{ 'active' if k == key }}" href="{{ url_for('dbp.month', cat=k) }}">{{ c.label }}</a>{% endfor %}</div>
+
+<form class="card" method="post" action="{{ url_for('dbp.month_run') }}" enctype="multipart/form-data" data-busy="Files padhi ja rahi hain…">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="cat" value="{{ key }}">
+  <div class="form-row">
+    <label class="field grow2">{% if key == 'full' %}Pura raw export (.xlsx) — ADR/NET + party sheets{% elif key == 'net' %}POD on NET raw export(s) (.xlsx){% else %}Pending Billing raw export(s) (.xlsx){% endif %}<input type="file" name="files" accept=".xlsx,.xlsm" multiple required></label>
+    <label class="field grow">Region name (report title)<input type="text" name="region" value="{{ region or 'Region' }}" maxlength="80" required></label>
+  </div>
+  <details class="manage"><summary>🏢 Region ki branch list — zero-pending branches bhi dikhane ke liye</summary>
+    <div class="manage-panel" style="max-width:640px">
+      <p class="muted small" style="margin:0 0 .6rem">Raw export me sirf data wali branches hoti hain. Poori list (zero wali bhi) chahiye to pichli report upload karein (B.CODE column padhi jayegi) ya codes paste karein.</p>
+      <label class="field">Pichli report / branch list (.xlsx)<input type="file" name="prev_report" accept=".xlsx,.xls"></label>
+      <label class="field">Ya branch codes paste karein (comma / space / nayi line)<textarea name="codes" class="input" rows="3"></textarea></label>
+      <label class="check"><input type="checkbox" name="save_list" value="1"> Is region ke liye save karein (agli baar khud use hogi)</label>
+      <label class="check"><input type="checkbox" name="use_saved" value="1" checked> Pehle se saved list use karein (agar hai)</label>
+    </div></details>
+  <div style="margin-top:.9rem"><button class="btn" type="submit">Upload & build</button></div>
+</form>
+
+{% if not ms %}
+  <div class="card empty" style="margin-top:1rem">Raw export upload karein — month-wise summary yahin ban jayegi.</div>
+{% elif result is none %}
+  <div class="flash warn" style="margin-top:1rem">Saved data nahi mila (server restart ho gaya hoga). Files dobara upload karein.</div>
+{% elif result.needs_month %}
+  <form class="card" style="margin-top:1rem" method="post" action="{{ url_for('dbp.month_period') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="cat" value="{{ key }}">
+    <h3 style="margin-bottom:.4rem">📅 Report kis month tak ki hai?</h3>
+    <p class="muted" style="margin:0 0 .8rem">{% if key != 'full' %}<b>{{ result.n_missing }}</b> docket(s) ki date nahi mil paayi.{% else %}Kuch dockets ki date nahi mil paayi.{% endif %} Batayein report kis month tak ki ban rahi hai — date-less dockets isi month me pending dikhaye jayenge.</p>
+    <div class="form-row">
+      {% if key == 'full' %}{% if 'adr' in result.needs_month %}{{ period_form('adr', 'ADR', 0) }}{% endif %}{% if 'net' in result.needs_month %}{{ period_form('net', 'NET', 0) }}{% endif %}
+      {% else %}{{ period_form('single', 'Month', 0) }}{% endif %}
+      <div class="field"><button class="btn" type="submit">Confirm</button></div>
+    </div>
+  </form>
+{% else %}
+  <div class="row-actions" style="margin:1rem 0 .4rem;align-items:center">
+    <a class="btn" href="{{ url_for('dbp.month_download', cat=key) }}">⬇ Download Excel</a>
+    {% if (key == 'full' and (result.cm_adr or result.cm_net)) or (key != 'full' and result.cm) %}
+      <form method="post" action="{{ url_for('dbp.month_reset_period') }}" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="cat" value="{{ key }}"><button class="btn ghost" type="submit">🔁 Month badlo</button></form>
+    {% endif %}
+  </div>
+  {% if key == 'full' %}
+    {% for sec in result.sections %}
+      <h3 style="margin:1.2rem 0 .5rem">{{ sec.label }} — {{ sec.months }} month(s)</h3>
+      {% if sec.html %}<div class="card" style="padding:0"><div class="table-wrap">{{ sec.html|safe }}</div></div>{% else %}<p class="muted">Koi data nahi mila.</p>{% endif %}
+    {% endfor %}
+    <h3 style="margin:1.4rem 0 .5rem">🔎 Counting audit</h3>
+    <div class="card">
+      {% for a in result.audit.rows %}
+        <div class="audit-row"><b>{{ a.label }}</b>
+          <span>Raw rows <b>{{ a.rows_in }}</b></span><span>Branch counted <b>{{ a.counted }}</b></span><span>Party counted <b>{{ a.party }}</b></span><span>Date-less <b>{{ a.dateless }}</b></span><span>Grand total <b>{{ a.grand }}</b></span>
+          <span class="pill {{ 'live' if a.ok else 'blocked' }}">{{ '✔ reconciled' if a.ok else '✖ mismatch' }}</span></div>
+        {% if a.dropped %}<div class="flash warn">{{ a.label }}: {{ a.dropped }} row(s) ka branch-code numeric nahi tha, count nahi hui: {{ a.samples }}</div>{% endif %}
+      {% endfor %}
+      <p class="muted small" style="margin:.7rem 0 0">OTHER END / DISPUTE MATTER ki {{ result.audit.excluded }} row(s) jaan-boojh kar count nahi hui (sirf report me dikhane ke liye).</p>
+      {% if result.audit.all_ok %}<div class="flash ok" style="margin-top:.7rem">Counting consistent hai — har category ka grand total = branch rows + party rows.</div>
+      {% else %}<div class="flash error" style="margin-top:.7rem">Counting mismatch mila — upar ✖ wali category dekhein.</div>{% endif %}
+    </div>
+  {% else %}
+    {% if result.cm %}<p class="muted small">Date-less dockets <b>{{ result.cm.strftime('%B - %y') }}</b> me daale gaye hain.</p>{% endif %}
+    {% if result.html %}<h3 style="margin:.6rem 0 .5rem">{{ result.labels|length }} month(s)</h3><div class="card" style="padding:0"><div class="table-wrap">{{ result.html|safe }}</div></div>
+    {% else %}<div class="flash warn">Is file me {{ 'NET/POD' if key == 'net' else 'PENDING BILLING/ADR' }} ka koi pehchaana hua data nahi mila.</div>{% endif %}
+  {% endif %}
+{% endif %}
+{% endblock %}

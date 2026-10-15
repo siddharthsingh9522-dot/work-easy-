@@ -1,0 +1,436 @@
+<div class="ptp-app">
+<button type="button" class="navToggle" id="navToggle" aria-label="Open menu">
+  <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
+<div class="navOverlay" id="navOverlay"></div>
+
+<div class="app-shell">
+<aside class="sideNav" id="sideNav">
+  <div class="sideNav-head">
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4L42 13.5V34.5L24 44L6 34.5V13.5L24 4Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M6 13.5L24 23L42 13.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M24 23V44" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+    </svg>
+    <b>Paid / ToPay Suite</b>
+    <button type="button" class="sideNav-close" id="sideNavClose" aria-label="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <nav class="sideNav-list" id="sideNavList">
+    <button type="button" class="sideNav-item active" data-mode="dashboard">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Dashboard
+    </button>
+    <button type="button" class="sideNav-item" data-mode="monthwise">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 19h16M7 19V9m5 10V5m5 14v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Month-wise Report
+    </button>
+    <button type="button" class="sideNav-item" data-mode="topaygen">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Generate ToPay Report
+    </button>
+    <button type="button" class="sideNav-item" data-mode="paidgen">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Generate Paid Report
+    </button>
+    <button type="button" class="sideNav-item" data-mode="combinedgen">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="8" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="8" height="16" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+      Generate Paid & ToPay Report
+    </button>
+    <button type="button" class="sideNav-item" data-mode="regionwise">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l9 4.5v9L12 20l-9-4.5v-9L12 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 11v9M3 6.5l9 4.5 9-4.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Region-wise Report
+    </button>
+    <button type="button" class="sideNav-item" data-mode="automail">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18v12H3V6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 7l9 6 9-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      Auto Mail (Region-wise)
+    </button>
+    <button type="button" class="sideNav-item" data-mode="cnquery">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      CN Query Tool
+    </button>
+  </nav>
+  <p class="sideNav-foot">Everything runs in your browser — files never leave this page.</p>
+</aside>
+
+<div class="page">
+
+  <header class="hero">
+    <svg class="hero-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4L42 13.5V34.5L24 44L6 34.5V13.5L24 4Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M6 13.5L24 23L42 13.5" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M24 23V44" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1 id="pageTitle">Dashboard</h1>
+      <p id="pageSubtitle">Sab options ek jagah — neeche se ya side menu se koi bhi tool kholo.</p>
+    </div>
+  </header>
+
+  <div id="modeDashboard">
+    <div class="dash-grid" id="dashGrid"></div>
+  </div>
+
+  <div id="modeMonthwise" hidden>
+
+  <section class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload a spreadsheet">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
+    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="upload-title">Drop your file here</p>
+    <p class="upload-sub">or <button type="button" class="link-btn" id="browseBtn">browse</button> · .xlsx, .xls or .csv</p>
+  </section>
+
+  <p class="file-meta" id="fileMeta" hidden></p>
+  <div class="error-box" id="pageError" hidden></div>
+
+  <div class="tabs-bar" id="tabsBar" hidden></div>
+  <div id="reportsContainer"></div>
+
+  <section class="report-card" id="askCard" hidden>
+    <p class="report-title">Ask about this data</p>
+    <p class="report-summary">B.CODE + Paid/ToPay + a month, or a CN / docket number — e.g. "201 topay January 25 pending" or a docket number for full details.</p>
+    <form class="ask-form" id="askForm">
+      <input type="text" id="askInput" autocomplete="off" placeholder="201 me topay me kitni pending hai" />
+      <button type="submit" class="download-btn"><span>Ask</span></button>
+    </form>
+    <div id="askLog"></div>
+  </section>
+
+  </div>
+
+  <div id="modeTopayGen" hidden>
+
+    <section class="report-card" id="fetchCard">
+      <div class="report-head">
+        <div>
+          <p class="report-title">Fetch &amp; generate from OmInsights</p>
+          <p class="report-summary">Pulls "0145 - Pending Cn without MR to Pay" straight from OmInsights and builds the ToPay report — no manual Excel export needed. Pehle Settings me apna OmInsights login save karein — see note below.</p>
+        </div>
+      </div>
+      <div class="fetch-grid">
+        <label class="fetch-field">
+          <span>Verified Flag</span>
+          <input type="text" id="fetchVerified" value="*" placeholder="* for all" />
+        </label>
+        <label class="fetch-field">
+          <span>Destination Code</span>
+          <input type="text" id="fetchDistCode" value="*" placeholder="* for all" />
+        </label>
+        <label class="fetch-field">
+          <span>Cn From Date</span>
+          <input type="date" id="fetchFromDate" />
+        </label>
+        <label class="fetch-field">
+          <span>Cn To Date</span>
+          <input type="date" id="fetchToDate" />
+        </label>
+      </div>
+      <div class="fetch-actions">
+        <button type="button" class="download-btn" id="fetchGenerateBtn"><span>Fetch &amp; Generate</span></button>
+        <span class="fetch-status" id="fetchStatus"></span>
+      </div>
+      <p class="report-summary">Settings → <b>OmInsights login</b> me apna username/password ek baar save karein (verify hokar encrypted store hota hai). Uske baad ye button seedha kaam karega — alag proxy chalane ki zarurat nahi.</p>
+      <div class="error-box" id="fetchError" hidden></div>
+    </section>
+
+    <p class="or-divider">— or upload a raw export manually —</p>
+
+    <section class="upload-zone" id="rawUploadZone" tabindex="0" role="button" aria-label="Upload raw pending CN export">
+      <input type="file" id="rawFileInput" accept=".xlsx,.xls,.csv" hidden />
+      <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="upload-title">Drop your raw "pending CN without MR to pay" export here</p>
+      <p class="upload-sub">or <button type="button" class="link-btn" id="rawBrowseBtn">browse</button> · .xlsx, .xls or .csv</p>
+    </section>
+
+    <p class="file-meta" id="rawFileMeta" hidden></p>
+    <div class="error-box" id="rawPageError" hidden></div>
+
+    <p class="master-status" id="masterStatus"></p>
+    <p class="master-update-row">
+      <button type="button" class="link-btn" id="updateMasterBtn">Update branch/region master</button>
+      <input type="file" id="masterFileInput" accept=".xlsx,.xls,.csv" hidden />
+    </p>
+
+    <section class="report-card" id="topayGenCard" hidden>
+      <div class="report-head">
+        <div>
+          <p class="report-title">Generated ToPay Report</p>
+          <p class="report-summary" id="topayGenSummary"></p>
+        </div>
+        <button type="button" class="download-btn" id="topayGenDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download as Excel</span></button>
+      </div>
+      <div id="topayGenTableSlot"></div>
+      <div class="fallback-box" id="topayGenFallback" hidden></div>
+
+      <div class="compare-box">
+        <p class="compare-title">Compare against your manual CN list</p>
+        <p class="report-summary">Copy the CN No. column from your manual sheet and paste it below (one per line) — it'll show exactly which CNs differ, in seconds.</p>
+        <textarea id="compareCnInput" rows="4" placeholder="Paste CN numbers here, one per line…"></textarea>
+        <div class="fetch-actions">
+          <button type="button" class="download-btn" id="compareCnBtn"><span>Compare</span></button>
+          <span class="fetch-status" id="compareCnStatus"></span>
+        </div>
+        <div id="compareCnResult"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="modePaidGen" hidden>
+
+    <section class="report-card" id="paidFetchCard">
+      <div class="report-head">
+        <div>
+          <p class="report-title">Fetch &amp; generate from OmInsights</p>
+          <p class="report-summary">Pulls "144 - Pending Cn without MR to Pay (PAID)" straight from OmInsights and builds the Paid report — no manual Excel export needed. Pehle Settings me apna OmInsights login save karein — see note below.</p>
+        </div>
+      </div>
+      <div class="fetch-grid">
+        <label class="fetch-field">
+          <span>Branch Code</span>
+          <input type="text" id="paidFetchBranchCode" value="*" placeholder="* for all" />
+        </label>
+        <label class="fetch-field">
+          <span>Cn From Date</span>
+          <input type="date" id="paidFetchFromDate" />
+        </label>
+        <label class="fetch-field">
+          <span>Cn To Date</span>
+          <input type="date" id="paidFetchToDate" />
+        </label>
+      </div>
+      <div class="fetch-actions">
+        <button type="button" class="download-btn" id="paidFetchGenerateBtn"><span>Fetch &amp; Generate</span></button>
+        <span class="fetch-status" id="paidFetchStatus"></span>
+      </div>
+      <p class="report-summary">Settings → <b>OmInsights login</b> me apna username/password ek baar save karein (verify hokar encrypted store hota hai). Uske baad ye button seedha kaam karega — alag proxy chalane ki zarurat nahi.</p>
+      <div class="error-box" id="paidFetchError" hidden></div>
+    </section>
+
+    <p class="or-divider">— or upload a raw export manually —</p>
+
+    <section class="upload-zone" id="paidRawUploadZone" tabindex="0" role="button" aria-label="Upload raw pending CN without MR to pay (paid) export">
+      <input type="file" id="paidRawFileInput" accept=".xlsx,.xls,.csv" hidden />
+      <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="upload-title">Drop your raw "pending CN without MR to pay" (PAID) export here</p>
+      <p class="upload-sub">or <button type="button" class="link-btn" id="paidRawBrowseBtn">browse</button> · .xlsx, .xls or .csv</p>
+    </section>
+
+    <p class="file-meta" id="paidRawFileMeta" hidden></p>
+    <div class="error-box" id="paidRawPageError" hidden></div>
+
+    <p class="master-status" id="paidMasterStatus"></p>
+    <p class="master-update-row">
+      <button type="button" class="link-btn" id="paidUpdateMasterBtn">Update branch/region master</button>
+      <input type="file" id="paidMasterFileInput" accept=".xlsx,.xls,.csv" hidden />
+    </p>
+
+    <section class="report-card" id="paidGenCard" hidden>
+      <div class="report-head">
+        <div>
+          <p class="report-title">Generated Paid Report</p>
+          <p class="report-summary" id="paidGenSummary"></p>
+        </div>
+        <button type="button" class="download-btn" id="paidGenDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download as Excel</span></button>
+      </div>
+      <div id="paidGenTableSlot"></div>
+      <div class="fallback-box" id="paidGenFallback" hidden></div>
+
+      <div class="compare-box">
+        <p class="compare-title">Compare against your manual CN list</p>
+        <p class="report-summary">Copy the CN No. column from your manual sheet and paste it below (one per line) — it'll show exactly which CNs differ, in seconds.</p>
+        <textarea id="paidCompareCnInput" rows="4" placeholder="Paste CN numbers here, one per line…"></textarea>
+        <div class="fetch-actions">
+          <button type="button" class="download-btn" id="paidCompareCnBtn"><span>Compare</span></button>
+          <span class="fetch-status" id="paidCompareCnStatus"></span>
+        </div>
+        <div id="paidCompareCnResult"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="modeCombinedGen" hidden>
+
+    <p class="master-status" id="combinedMasterStatus"></p>
+
+    <div class="combo-grid">
+      <div class="combo-slot">
+        <p class="combo-slot-label">1. PAID raw data</p>
+        <div class="combo-fetch">
+          <label class="fetch-field combo-fetch-field">
+            <span>Branch Code</span>
+            <input type="text" id="comboPaidFetchBranchCode" value="*" placeholder="* for all" />
+          </label>
+          <div class="combo-fetch-dates">
+            <label class="fetch-field combo-fetch-field">
+              <span>From</span>
+              <input type="date" id="comboPaidFetchFromDate" />
+            </label>
+            <label class="fetch-field combo-fetch-field">
+              <span>To</span>
+              <input type="date" id="comboPaidFetchToDate" />
+            </label>
+          </div>
+          <div class="fetch-actions">
+            <button type="button" class="download-btn" id="comboPaidFetchBtn"><span>Fetch from OmInsights</span></button>
+            <span class="fetch-status" id="comboPaidFetchStatus"></span>
+          </div>
+        </div>
+        <p class="or-divider">— or upload manually —</p>
+        <section class="upload-zone" id="comboPaidUploadZone" tabindex="0" role="button" aria-label="Upload raw PAID export">
+          <input type="file" id="comboPaidFileInput" accept=".xlsx,.xls,.csv" hidden />
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="upload-title">Drop the PAID export here</p>
+          <p class="upload-sub">or <button type="button" class="link-btn" id="comboPaidBrowseBtn">browse</button></p>
+        </section>
+        <p class="combo-slot-summary" id="comboPaidSummary">No file loaded yet.</p>
+      </div>
+      <div class="combo-slot">
+        <p class="combo-slot-label">2. TOPAY raw data</p>
+        <div class="combo-fetch">
+          <div class="combo-fetch-dates">
+            <label class="fetch-field combo-fetch-field">
+              <span>Verified Flag</span>
+              <input type="text" id="comboTopayFetchVerified" value="*" placeholder="*" />
+            </label>
+            <label class="fetch-field combo-fetch-field">
+              <span>Dest. Code</span>
+              <input type="text" id="comboTopayFetchDistCode" value="*" placeholder="*" />
+            </label>
+          </div>
+          <div class="combo-fetch-dates">
+            <label class="fetch-field combo-fetch-field">
+              <span>From</span>
+              <input type="date" id="comboTopayFetchFromDate" />
+            </label>
+            <label class="fetch-field combo-fetch-field">
+              <span>To</span>
+              <input type="date" id="comboTopayFetchToDate" />
+            </label>
+          </div>
+          <div class="fetch-actions">
+            <button type="button" class="download-btn" id="comboTopayFetchBtn"><span>Fetch from OmInsights</span></button>
+            <span class="fetch-status" id="comboTopayFetchStatus"></span>
+          </div>
+        </div>
+        <p class="or-divider">— or upload manually —</p>
+        <section class="upload-zone" id="comboTopayUploadZone" tabindex="0" role="button" aria-label="Upload raw ToPay export">
+          <input type="file" id="comboTopayFileInput" accept=".xlsx,.xls,.csv" hidden />
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="upload-title">Drop the ToPay export here</p>
+          <p class="upload-sub">or <button type="button" class="link-btn" id="comboTopayBrowseBtn">browse</button></p>
+        </section>
+        <p class="combo-slot-summary" id="comboTopaySummary">No file loaded yet.</p>
+      </div>
+    </div>
+
+    <div class="error-box" id="comboPageError" hidden></div>
+
+    <section class="report-card" id="comboReportCard" hidden>
+      <div class="report-head">
+        <div>
+          <p class="report-title">Combined Paid &amp; ToPay Report</p>
+          <p class="report-summary" id="comboReportSummary">One workbook, two sheets — "PAID" and "TOPAY".</p>
+        </div>
+        <button type="button" class="download-btn" id="comboDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download as Excel</span></button>
+      </div>
+      <div class="fallback-box" id="comboFallback" hidden></div>
+    </section>
+
+  </div>
+
+  <div id="modeRegionwise" hidden>
+
+    <section class="upload-zone" id="regionUploadZone" tabindex="0" role="button" aria-label="Upload a spreadsheet to split by region">
+      <input type="file" id="regionFileInput" accept=".xlsx,.xls,.csv" hidden />
+      <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="upload-title">Drop your file here</p>
+      <p class="upload-sub">or <button type="button" class="link-btn" id="regionBrowseBtn">browse</button> · .xlsx, .xls or .csv — needs a REGION column</p>
+    </section>
+
+    <p class="file-meta" id="regionFileMeta" hidden></p>
+    <div class="error-box" id="regionPageError" hidden></div>
+
+    <section class="report-card" id="regionCard" hidden>
+      <div class="report-head">
+        <div>
+          <p class="report-title">Split by region</p>
+          <p class="report-summary" id="regionSummary"></p>
+        </div>
+        <button type="button" class="download-btn" id="regionDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download ZIP (region-wise)</span></button>
+      </div>
+      <div id="regionListSlot"></div>
+      <div class="fallback-box" id="regionFallback" hidden></div>
+    </section>
+
+  </div>
+
+  <div id="modeAutomail" hidden>
+
+    <section class="upload-zone" id="automailUploadZone" tabindex="0" role="button" aria-label="Upload the network directory file">
+      <input type="file" id="automailFileInput" accept=".xls,.xlsx" hidden />
+      <svg class="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="upload-title">Drop the directory file here</p>
+      <p class="upload-sub">or <button type="button" class="link-btn" id="automailBrowseBtn">browse</button> · the "OM GROUP NETWORK DIRECTORY" .xls/.xlsx export</p>
+    </section>
+
+    <p class="file-meta" id="automailFileMeta" hidden></p>
+    <div class="error-box" id="automailPageError" hidden></div>
+
+    <section class="report-card" id="automailCard" hidden>
+      <div class="report-head">
+        <div>
+          <p class="report-title">Recipients by region</p>
+          <p class="report-summary" id="automailSummary"></p>
+        </div>
+        <button type="button" class="download-btn" id="automailDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download recipient list (CSV)</span></button>
+      </div>
+      <div class="error-box" id="automailSendNote" style="background:var(--total-bg);color:var(--header-ink);border-color:var(--header-bg);">A browser page can't connect to an SMTP server directly (and never should embed a mail password) — so real one-click sending isn't possible here. What each region card below <em>can</em> do: download that region's report as the attachment, then open a ready-to-send draft (To/Cc/Subject/Body filled in) in your default mail app — Thunderbird if that's what you have set as default.</div>
+      <div class="fetch-grid" style="margin-top:1rem;">
+        <label class="fetch-field">Your name (for "Regards,")
+          <input type="text" id="automailSenderName" placeholder="e.g. Aditya Sharma" />
+        </label>
+        <label class="fetch-field">Always Cc (comma-separated, optional)
+          <input type="text" id="automailAlwaysCc" placeholder="name@olsc.in, name2@omlogistics.co.in" />
+        </label>
+      </div>
+      <div id="automailRegionsSlot"></div>
+    </section>
+
+  </div>
+
+  <div id="modeCnQuery" hidden>
+    <button type="button" class="back-to-dash" data-mode="dashboard">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Dashboard
+    </button>
+    <iframe id="cnQueryFrame" title="CN Query Tool"></iframe>
+  </div>
+
+  <footer class="note">Everything runs in your browser — the file never leaves this page.</footer>
+</div>
+</div>
+</div>

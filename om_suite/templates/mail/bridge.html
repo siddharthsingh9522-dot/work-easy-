@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Thunderbird setup · {{ app_name }}{% endblock %}
+{% block page_title %}Thunderbird setup{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/mail.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Thunderbird se mail bhejna</h2><p>Ek baar setup: har mail aapke apne Thunderbird account se jayegi, bilkul waise jaise aap khud bhejte.</p></div>
+  <a class="btn ghost" href="{{ url_for('mail.index') }}">← Mail Center</a></div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h3 style="margin-bottom:.5rem">Status</h3>
+  {% if info.connected %}<p><span class="dot ok"></span> <b>Extension connected</b> — last seen {{ info.ago }} second pehle.</p>
+  {% elif info.seen %}<p><span class="dot"></span> Extension pichli baar {{ (info.ago // 60) }} minute pehle dikha. Thunderbird khula hai?</p>
+  {% else %}<p><span class="dot"></span> Extension abhi tak connect nahi hua — neeche ke steps follow karein.</p>{% endif %}
+  <p class="muted small" style="margin:0">Queue: {% if info.counts %}{% for k, v in info.counts.items() %}{{ k }}: {{ v }}{{ ' • ' if not loop.last }}{% endfor %}{% else %}khaali{% endif %}</p>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <h3 style="margin-bottom:.5rem">Setup (ek baar)</h3>
+  <ol class="steps">
+    <li>Extension download karein: <a class="btn sm" href="{{ url_for('mail.extension_zip') }}">⬇ om-suite-mail-bridge.zip</a> (pehle se purane "Auto Bill Intelligence" / "OM Report AI" bridge extensions ho to unhe remove kar dein).</li>
+    <li>Thunderbird → <b>Add-ons and Themes</b> → ⚙ → <b>Debug Add-ons</b> → <b>Load Temporary Add-on</b> → zip ke andar ki <code>manifest.json</code> chunein (zip ko extract karke). Permanent install ke liye extension ko sign karwana padta hai — README me likha hai.</li>
+    <li>Extension ke <b>Options</b> me neeche wala <b>connection code</b> paste karke <b>Apply code &amp; connect</b> dabayein. Bas — URL, username aur token apne aap bhar jate hain.</li>
+    <li>Wapas Mail Center me jayein: <b>Test mode</b> me ek mail bhej ke dekhein (Thunderbird khula rakhein).</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom:.5rem">Aapka connection code</h3>
+  <p class="muted small" style="margin:0 0 .5rem">App: <code>{{ base }}</code> · User: <code>{{ user_email }}</code> — ye code aapke account ka secret hai, kisi ko share na karein.</p>
+  <textarea id="codeBox" class="input codebox" rows="3" readonly>{{ code }}</textarea>
+  <div class="row-actions" style="margin-top:.6rem">
+    <button class="btn" type="button" id="copyCode">Copy code</button>
+    <form method="post" action="{{ url_for('mail.bridge_regenerate') }}" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn ghost" type="submit" data-confirm="Naya code banane par purana extension kaam karna band kar dega. Pakka?">♻ Naya code banao</button></form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/mail.js') }}"></script>{% endblock %}

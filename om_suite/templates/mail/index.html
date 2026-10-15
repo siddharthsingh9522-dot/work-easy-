@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Mail Center · {{ app_name }}{% endblock %}
+{% block page_title %}Mail Center{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/mail.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Pending Mail Center</h2><p>Branch-wise draft, poore region ko auto-mail, ya poori DBP report ek saath — Thunderbird ya SMTP se.</p></div>
+  <a class="btn ghost" href="{{ url_for('mail.bridge') }}">🔌 Thunderbird setup {% if bridge.connected %}<span class="dot ok"></span>{% else %}<span class="dot"></span>{% endif %}</a></div>
+
+{% if not has %}
+  <div class="card empty">Pehle <a href="{{ url_for('dbp.report') }}">Report Builder</a> me report generate karein.</div>
+{% elif not dir_ok %}
+  <div class="flash warn">Directory master load nahi hai. {% if user.role == 'admin' %}<a href="{{ url_for('dbp.directory') }}">Directory & Masters</a> se upload karein.{% else %}Admin se directory update karwayein.{% endif %}</div>
+{% else %}
+<div class="tabs">
+  <a class="tab {{ 'active' if tab == 'one' }}" href="{{ url_for('mail.index', tab='one') }}">📨 Single Branch Draft</a>
+  <a class="tab {{ 'active' if tab == 'region' }}" href="{{ url_for('mail.index', tab='region', method=method) }}">🚀 Auto Mail — All Region</a>
+  <a class="tab {{ 'active' if tab == 'full' }}" href="{{ url_for('mail.index', tab='full', method=method) }}">📦 Send Full DBP Report</a>
+</div>
+
+{% if tab == 'one' %}
+  <form class="card" method="get"><input type="hidden" name="tab" value="one">
+    <div class="form-row">
+      <label class="field grow">Branch Code<select name="code" class="input" onchange="this.form.submit()">{% for c in codes %}<option value="{{ c }}" {{ 'selected' if c == code }}>{{ c }}</option>{% endfor %}</select></label>
+      <label class="field grow">Mail category<select name="cat" class="input" onchange="this.form.submit()">{% for c in cats %}<option {{ 'selected' if c == cat_label }}>{{ c }}</option>{% endfor %}</select></label>
+    </div></form>
+  <div class="card" style="margin-top:1rem">
+    <div class="mail-head"><div><span class="muted small">To</span><div class="mono">{{ mail.to or '—' }}</div></div><div><span class="muted small">CC</span><div class="mono">{{ mail.cc or '—' }}</div></div></div>
+    <div style="margin:.6rem 0"><span class="muted small">Subject</span><div><b>{{ mail.subject }}</b></div></div>
+    <p class="muted small" style="margin:.2rem 0">Rows in data sheet: <b>{{ mail.docket_count }}</b> · Attachment: {{ mail.attachment_name }}</p>
+    {% if mail.missing_roles %}<div class="flash warn">Directory me missing roles: {{ mail.missing_roles|join(', ') }}</div>{% endif %}
+    {% if mail.check %}<div class="flash warn">SUMMARY aur data sheet ke count match nahi kar rahe: {{ mail.check|join('; ') }}</div>{% endif %}
+    <p style="margin:.8rem 0 .3rem"><b>Mail preview</b> <span class="muted small">(recipient ko aisa dikhega)</span></p>
+    <iframe class="mailframe" sandbox srcdoc="{{ mail.html_body }}"></iframe>
+    <details class="manage" style="margin-top:.7rem"><summary>Plain-text version</summary><pre class="plain">{{ mail.body }}</pre></details>
+    <div class="row-actions" style="margin-top:1rem">
+      <a class="btn" href="{{ url_for('mail.eml', code=code, cat=cat_label) }}">⬇ Email draft (.eml) — data sheet attached</a>
+      <a class="btn ghost" href="{{ url_for('mail.sheet', code=code, cat=cat_label) }}">⬇ Branch data sheet (.xlsx)</a>
+    </div>
+  </div>
+
+{% elif tab == 'region' %}
+  <p><b>Region:</b> {{ st.region_name }} · har branch ko uska pending summary + data sheet.</p>
+  <p class="muted small">Recipients: Branch Incharge (compulsory) + Branch Manager + Billing + Branch DBP/ToPay person + Region DBP (compulsory). Is mode me AREA MANAGER include nahi hota. Directory me jo email nahi hai wo invent nahi hoti.</p>
+  <form class="card" method="post" action="{{ url_for('mail.region_prepare') }}" data-busy="Saare branches ki mail + data sheet ban rahi hai…">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h3 style="margin-bottom:.5rem">1️⃣ Region DBP person (compulsory)</h3>
+    <label class="field">Directory se DBP candidates (is region ke branches ke) <span class="muted small">— Ctrl/Cmd se multiple chunein</span>
+      <select name="dbp_pick" class="input" multiple size="{{ [candidates|length, 6]|min if candidates else 3 }}">{% for c in candidates %}<option value="{{ c.email }}" {{ 'selected' if plan_meta and c.email in plan_meta.region_dbp }}>{{ c.label }}</option>{% endfor %}</select></label>
+    <label class="field">Ya email khud likho (comma se alag)<input type="text" name="dbp_extra" placeholder="dbp.region@company.com"></label>
+    <h3 style="margin:.6rem 0 .5rem">2️⃣ Preview plan</h3>
+    <div class="form-row">
+      <label class="field grow">Mail category<select name="cat" class="input">{% for c in cats %}<option {{ 'selected' if plan_meta and plan_meta.cat == c }}>{{ c }}</option>{% endfor %}</select></label>
+      <label class="check"><input type="checkbox" name="skip" value="1" checked> Jin branches ke pending rows nahi, unhe skip karo</label>
+      <label class="check"><input type="checkbox" name="allow" value="1"> Branch Incharge email na ho tab bhi bhejo</label>
+    </div>
+    <button class="btn" type="submit">🧾 Prepare plan (kuch bhi send nahi hoga)</button>
+  </form>
+  {% if plan_rows is defined %}
+    {% if not plan_meta.region_dbp %}<div class="flash warn" style="margin-top:1rem">Region DBP select/likhe bina mail nahi jayegi (BLOCKED dikhengi).</div>{% endif %}
+    <div class="kpis" style="margin:1rem 0"><div class="kpi"><div class="kpi-l">Ready to send</div><div class="kpi-v">{{ n_ready }}</div></div><div class="kpi"><div class="kpi-l">Blocked</div><div class="kpi-v">{{ n_blocked }}</div></div><div class="kpi"><div class="kpi-l">Skipped</div><div class="kpi-v">{{ n_skipped }}</div></div></div>
+    <div class="card" style="padding:0"><div class="table-wrap"><table class="tbl dbp"><thead><tr><th>B.CODE</th><th>Branch</th><th>Status</th><th>Reason</th><th>To</th><th>CC</th><th>Missing roles</th><th>Rows</th></tr></thead><tbody>
+      {% for r in plan_rows %}<tr><td><a href="{{ url_for('mail.index', tab='region', prev=r.code, method=method) }}">{{ r.code }}</a></td><td>{{ r.name }}</td><td><span class="pill {{ {'READY':'live','BLOCKED':'blocked','SKIPPED':'warn'}.get(r.status, '') }}">{{ r.status }}</span></td><td>{{ r.reason }}</td><td>{{ r.to }}</td><td>{{ r.cc }}</td><td>{{ r.missing }}{% if r.fallback %} <span class="muted small">(fallback)</span>{% endif %}{% if r.incharge_mgr %} <span class="muted small">(incharge = mgr)</span>{% endif %}</td><td>{{ r.rows }}</td></tr>{% endfor %}
+    </tbody></table></div></div>
+    {% if prev %}<div class="card" style="margin-top:1rem"><p style="margin:0 0 .4rem"><b>Preview — {{ prev.branch_code }} {{ prev.branch_name }}</b> <span class="muted small">(table me B.CODE par click karke badlein)</span></p><p class="muted small" style="margin:0 0 .5rem">Subject: {{ prev.mail.subject }}</p><iframe class="mailframe" sandbox srcdoc="{{ prev.mail.html_body }}"></iframe></div>{% endif %}
+    <div style="margin-top:1rem">{% with kind='region', n=n_ready %}{% include "mail/_send.html" %}{% endwith %}</div>
+  {% endif %}
+
+{% elif tab == 'full' %}
+  <p><b>Region:</b> {{ st.region_name }} · generate hui <b>poori DBP report</b> (saari sheets) ek saath.</p>
+  <p class="muted small">Recipients: report me jitni branches dikh rahi hain un sabke <b>saare log (To)</b> + un branches ke <b>Area Manager (CC)</b>. Directory me jinki email nahi hai unhe skip kiya jata hai.</p>
+  <form class="card" method="post" action="{{ url_for('mail.full_prepare') }}" data-busy="Poori report ka Excel ban raha hai…">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row">
+      <label class="field grow">Ek mail me max recipients (server limit)<input type="number" name="max" value="400" min="50" max="1000" step="50"></label>
+      <label class="field grow">Extra CC (optional, comma se alag)<input type="text" name="extra_cc"></label>
+      <label class="check"><input type="checkbox" name="bcc" value="1"> Sab log BCC me (privacy — koi doosre ki email nahi dekhega)</label>
+    </div>
+    <button class="btn" type="submit">🧾 Prepare full-report mail (kuch bhi send nahi hoga)</button>
+  </form>
+  {% if fp is defined %}
+    <div class="kpis" style="margin:1rem 0"><div class="kpi"><div class="kpi-l">Branches</div><div class="kpi-v">{{ fp.branches|length }}</div></div><div class="kpi"><div class="kpi-l">People (To)</div><div class="kpi-v">{{ fp.staff }}</div></div><div class="kpi"><div class="kpi-l">Area Managers (CC)</div><div class="kpi-v">{{ fp.area }}</div></div><div class="kpi"><div class="kpi-l">Mails</div><div class="kpi-v">{{ fp.mails|length }}</div></div></div>
+    {% if not fp.staff %}<div class="flash error">Kisi bhi branch ke liye directory me email nahi mili.</div>{% endif %}
+    {% if m0 %}
+      <div class="card" style="padding:0"><div class="table-wrap"><table class="tbl dbp"><thead><tr>{% for k in (fp.branches[0].keys() if fp.branches else []) %}<th>{{ k }}</th>{% endfor %}</tr></thead><tbody>{% for b in fp.branches %}<tr>{% for v in b.values() %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div>
+      <div class="card" style="margin-top:1rem">
+        <p style="margin:0 0 .4rem" class="muted small">Subject: <b>{{ m0.subject }}</b> · Attachment: {{ m0.attachment_name }} ({{ m0_kb }} KB)</p>
+        <details class="manage"><summary>Recipient list dekho</summary><div class="manage-panel"><label class="field">{{ 'BCC' if full_meta.bcc else 'To' }}<textarea class="input" rows="4" readonly>{{ fp_to }}</textarea></label><label class="field">CC (Area Managers)<textarea class="input" rows="3" readonly>{{ fp_cc }}</textarea></label></div></details>
+        <iframe class="mailframe" sandbox srcdoc="{{ m0.html_body }}" style="margin-top:.7rem"></iframe>
+      </div>
+      <div style="margin-top:1rem">{% with kind='full', n=fp.mails|length %}{% include "mail/_send.html" %}{% endwith %}</div>
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% if smtp_log %}
+  <h3 style="margin:1.6rem 0 .5rem">SMTP send log <span class="muted small">— {{ smtp_log.label }} · {{ smtp_log.at }}</span></h3>
+  <div class="card" style="padding:0"><div class="table-wrap"><table class="tbl dbp"><thead><tr><th>Branch</th><th>Status</th><th>To</th><th>CC</th><th>Error</th></tr></thead><tbody>
+    {% for r in smtp_log.rows %}<tr><td>{{ r.branch_code }} {{ r.branch_name or '' }}</td><td><span class="pill {{ 'live' if r.status == 'SENT' else 'blocked' }}">{{ r.status }}</span></td><td>{{ r.to }}</td><td>{{ r.cc }}</td><td>{{ r.error }}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+  <p><a class="btn ghost sm" href="{{ url_for('mail.smtp_log_csv') }}">⬇ Send log (.csv)</a></p>
+{% endif %}
+
+{% if batch %}
+  <h3 style="margin:1.6rem 0 .5rem">📬 Thunderbird send progress</h3>
+  <div class="card" id="progress" data-url="{{ url_for('mail.progress', batch=batch) }}" data-batch="{{ batch }}" data-batch-url="{{ url_for('mail.batch_action') }}">
+    <div class="pbar"><i id="pfill" style="width:0"></i></div>
+    <p id="ptext" class="muted small">Loading…</p>
+    <div id="pnote" class="muted small"></div>
+    <div class="row-actions" style="margin:.5rem 0"><button class="btn ghost sm" id="pRetry" type="button" hidden>🔁 Failed wali dobara queue karo</button><button class="btn ghost sm" id="pCancel" type="button" hidden>⛔ Pending wali cancel karo</button></div>
+    <div class="table-wrap"><table class="tbl dbp" id="ptable"><thead><tr><th>Branch</th><th>Status</th><th>To</th><th>Error</th></tr></thead><tbody></tbody></table></div>
+  </div>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/mail.js') }}"></script>{% endblock %}

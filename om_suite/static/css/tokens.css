@@ -1,0 +1,16 @@
+/* Design tokens - one light theme (clean white + blue) shared by the shell AND the embedded tools.
+   Paid/ToPay's own CSS reads the same variable names, so it picks these up automatically. */
+:root{
+  --bg:#F4F7FB; --surface:#FFFFFF; --surface-2:#EEF3FA; --border:#DCE3EE;
+  --ink:#12233F; --ink-soft:#52627D; --ink-faint:#8190A8;
+  --accent:#2563EB; --accent-strong:#1D4ED8; --accent-ink:#FFFFFF; --accent-soft:#E6EEFF;
+  --header-bg:#12233F; --header-ink:#F4F7FC; --total-bg:#E3ECFB;
+  --danger:#B3261E; --danger-soft:#FDECEA;
+  --success:#15803D; --success-soft:#E7F6EC; --warn:#B45309; --warn-soft:#FEF3C7;
+  --shadow:0 1px 2px rgba(18,35,63,.06),0 8px 24px rgba(18,35,63,.06);
+  --radius:10px;
+  --font-head:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+  --font-body:'Inter','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  --sidebar-w:268px; --topbar-h:60px;
+}

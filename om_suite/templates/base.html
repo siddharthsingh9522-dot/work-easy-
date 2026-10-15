@@ -1,0 +1,77 @@
+{%- from "_icons.html" import icon, logo -%}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}{{ app_name }}{% endblock %}</title>
+<meta name="theme-color" content="#2563EB">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="manifest" href="{{ url_for('main.manifest') }}">
+<link rel="icon" href="{{ asset('img/favicon.svg') }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ asset('img/icon-192.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+<link rel="stylesheet" href="{{ asset('css/app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="{{ url_for('main.dashboard') }}">{{ logo() }}<span><b>{{ app_name }}</b><small>OM Logistics operations</small></span></a>
+    <nav class="nav">
+      <a class="nav-item {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">{{ icon('dashboard') }} Dashboard</a>
+      {% for group, items in nav_groups %}
+        <div class="nav-label">{{ group }}</div>
+        {% for m in items %}
+          {% if m.status == 'live' %}{% set href = url_for(m.endpoint) %}
+          {% elif m.status == 'external' and gr_auto_url %}{% set href = gr_auto_url %}
+          {% else %}{% set href = url_for('main.module_page', module_id=m.id) %}{% endif %}
+          <a class="nav-item {% if active_module == m.id or (request.view_args and request.view_args.get('module_id') == m.id) %}active{% endif %}"
+             href="{{ href }}" {% if m.status == 'external' and gr_auto_url %}target="_blank" rel="noopener"{% endif %}>
+            {{ icon(m.icon) }} <span>{{ m.name }}</span>
+            {% if m.id == 'admin_users' and pending_count %}<span class="badge">{{ pending_count }}</span>
+            {% elif m.status == 'soon' %}<span class="pill soon">P{{ m.phase }}</span>
+            {% elif m.status == 'external' %}<span class="pill">↗</span>{% endif %}
+          </a>
+          {% if m.children and active_module == m.id %}
+            {% for mode, label in m.children %}
+              <a class="nav-sub" data-sub-mode="{{ mode }}" href="{{ url_for(m.endpoint) }}#{{ mode }}">{{ label }}</a>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">{{ app_name }} v{{ app_version }}</div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Open menu">{{ icon('menu') }}</button>
+      <h1 class="topbar-title">{% block page_title %}{{ app_name }}{% endblock %}</h1>
+      <div class="spacer"></div>
+      {% if user %}
+      <details class="usermenu" id="userMenu">
+        <summary><span class="avatar">{{ user.name[:1]|upper }}</span><span class="uname">{{ user.name }}</span></summary>
+        <div class="menu-panel">
+          <div class="who"><b>{{ user.name }}</b><span>{{ user.email }}</span><br>{% if user.role == 'admin' %}<span class="pill admin">Admin</span>{% else %}<span class="pill">User</span>{% endif %}</div>
+          <a href="{{ url_for('main.settings') }}">{{ icon('settings') }} Settings</a>
+          <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">{{ icon('logout') }} Logout</button></form>
+        </div>
+      </details>
+      {% endif %}
+    </header>
+    <main class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}
+        <div class="flash {{ cat }}" role="status">{{ msg }}</div>
+      {% endfor %}{% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script src="{{ asset('js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

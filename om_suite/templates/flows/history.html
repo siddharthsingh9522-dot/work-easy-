@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Mail history · {{ app_name }}{% endblock %}
+{% block page_title %}Mail history{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Thunderbird queue / history</h2><p>Aapke Thunderbird bridge ki recent jobs (sirf aapki).</p></div></div>
+<div class="card" style="padding:0"><div class="table-wrap"><table class="tbl dbp"><thead><tr><th>#</th><th>Type</th><th>Status</th><th>Tool / row</th><th>To</th><th>Subject</th><th>Error</th></tr></thead><tbody>
+{% for j in jobs %}<tr><td>{{ j.id }}</td><td>{{ j.type }}</td><td><span class="pill {{ {'DONE':'live','ERROR':'blocked','CANCELLED':'warn'}.get(j.status, 'warn') }}">{{ j.status }}</span></td><td>{{ j.ref.module or '' }} {{ j.ref.code or '' }}</td><td>{{ j.to }}</td><td>{{ j.subject }}</td><td>{{ j.error }}</td></tr>
+{% else %}<tr><td colspan="7" class="empty">Abhi koi job nahi.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}DBP Report Builder · {{ app_name }}{% endblock %}
+{% block page_title %}DBP Report Builder{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Report Builder</h2><p>Raw exports upload karo → normalized branch-wise DBP report banao.</p></div>
+  {% if has %}<a class="btn" href="{{ url_for('dbp.report_download') }}">⬇ Final Excel download</a>{% endif %}</div>
+
+<form class="card" method="post" action="{{ url_for('dbp.report_generate') }}" enctype="multipart/form-data" data-busy="Report ban rahi hai… (badi files me 1-2 minute lag sakte hain)">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-row">
+    <label class="field grow">Region name<input type="text" name="region" value="{{ region or 'Region' }}" maxlength="80" required></label>
+    <label class="field grow2">Department exports (.xlsx) - ek ya zyada<input type="file" name="files" accept=".xlsx,.xlsm" multiple required></label>
+    <div class="field"><button class="btn" type="submit">🚀 Generate report</button></div>
+  </div>
+  <p class="muted small" style="margin:.2rem 0 0">Normalizing sheets, DDR codes aur branch names. Server par "folder se auto-pick" nahi hota - files upload karein.</p>
+</form>
+
+{% if has %}
+  <p class="muted small" style="margin:1rem 0 .4rem">Region: <b>{{ st.region_name }}</b> · generated {{ st.last_report_time }} · {{ rows }} summary rows</p>
+  {% if kpis %}<div class="kpis">{% for label, val in kpis %}<div class="kpi"><div class="kpi-l">{{ label }}</div><div class="kpi-v">{{ '{:,}'.format(val) }}</div></div>{% endfor %}</div>{% endif %}
+  {% if top %}<div class="card" style="margin:1rem 0"><h3 style="margin-bottom:.6rem">Top pending branches</h3>
+    <div class="bars">{% set mx = top[0][2] %}{% for name, code, total in top %}
+      <div class="bar-row"><span class="bar-l">{{ name }} <span class="muted small">({{ code }})</span></span><span class="bar"><i style="width:{{ (total / mx * 100)|round|int }}%"></i></span><b>{{ '{:,}'.format(total) }}</b></div>{% endfor %}</div></div>{% endif %}
+  <h3 style="margin:1.2rem 0 .6rem">SUMMARY preview</h3>
+  <div class="card" style="padding:0"><div class="table-wrap">{{ table|safe }}</div></div>
+  <p class="muted small">Final workbook tabs: SUMMARY → ADR → NET → DDR PENDING → DDR AUDIT.</p>
+{% else %}
+  <div class="card empty" style="margin-top:1rem">Abhi koi report generate nahi hui. Upar files upload karke <b>Generate report</b> dabayein.</div>
+{% endif %}
+{% endblock %}

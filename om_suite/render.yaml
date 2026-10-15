@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: om-suite
+    runtime: docker
+    plan: free            # GST Query (Chrome) needs more RAM: use "starter" once Phase 3 is live
+    healthCheckPath: /healthz
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAILS
+        value: siddharthsingh9522@gmail.com
+      - key: FIREBASE_PROJECT_ID
+        value: ptp-report
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON   # paste the service-account JSON here (one line)
+        sync: false
+      - key: PUBLIC_URL                      # https://<your-app>.onrender.com (for the extension connection code)
+        sync: false
+      - key: GR_AUTO_URL                     # URL of the separate GR Auto app (optional)
+        sync: false

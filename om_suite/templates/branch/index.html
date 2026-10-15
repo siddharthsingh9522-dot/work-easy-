@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Branch Detail Finder · {{ app_name }}{% endblock %}
+{% block page_title %}Branch Detail Finder{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/lookup.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Branch Detail Finder</h2><p>Branch code se naam, address, controlling branch aur GST number.</p></div></div>
+<div class="tabs"><a class="tab active" href="#single" data-tab="single">Single lookup</a><a class="tab" href="#bulk" data-tab="bulk">Bulk (Excel)</a></div>
+
+<div id="pane-single" class="card">
+  <form id="lookupForm" class="form-row"><label class="field grow">Branch code<input type="number" id="code" placeholder="e.g. 1001" required></label>
+    <div class="field"><button class="btn" type="submit">Search</button></div></form>
+  <div id="msg" class="muted"></div>
+  <div id="result" class="result-card" hidden>
+    <div class="table-wrap" id="resultTable"></div>
+    <form method="post" action="{{ url_for('branch.lookup_download') }}" id="dlForm" style="margin-top:.8rem"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% for c in ['SEARCH_CODE','BRANCH_CODE','BRANCH_NAME','ADDRESS','CONTROLLING_BRANCH','GST_NO'] %}<input type="hidden" name="{{ c }}">{% endfor %}
+      <button class="btn ghost" type="submit">⬇ Download as Excel</button></form>
+  </div>
+</div>
+
+<div id="pane-bulk" class="card" hidden>
+  <p class="muted" style="margin-top:0">Excel ke <b>pehle column</b> me branch codes (header ke saath). Server ko rate-limit se bachane ke liye har code ke beech 1-2 sec ka gap hota hai.</p>
+  <form id="bulkForm" class="form-row"><label class="field grow2">Excel file (.xlsx / .xls)<input type="file" name="file" accept=".xlsx,.xls" required></label>
+    <div class="field"><button class="btn" type="submit">Upload & start</button></div></form>
+  <div id="prog" hidden><div class="pbar"><i id="pfill" style="width:0"></i></div><p id="ptext" class="muted small" style="margin:.2rem 0"></p>
+    <div class="row-actions"><button class="btn ghost sm" id="pstop" type="button">⛔ Stop</button><span id="pdl"></span></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/lookup.js') }}"></script><script>
+(function () {
+  var COLS = ['BRANCH_CODE', 'BRANCH_NAME', 'ADDRESS', 'CONTROLLING_BRANCH', 'GST_NO'];
+  function pane(n) { document.getElementById('pane-single').hidden = n !== 'single'; document.getElementById('pane-bulk').hidden = n !== 'bulk';
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-tab') === n); }); }
+  document.querySelectorAll('.tab').forEach(function (t) { t.addEventListener('click', function (e) { e.preventDefault(); pane(t.getAttribute('data-tab')); }); });
+  document.getElementById('lookupForm').addEventListener('submit', function (e) {
+    e.preventDefault(); var msg = document.getElementById('msg'), res = document.getElementById('result');
+    res.hidden = true; msg.className = 'muted'; msg.textContent = 'Fetching data…';
+    var fd = new FormData(); fd.append('branch_code', document.getElementById('code').value.trim());
+    Lookup.post('/branch/lookup', fd).then(function (r) {
+      if (!r.ok) { msg.className = 'err'; msg.textContent = r.error || 'Error'; return; }
+      msg.textContent = ''; Lookup.table(document.getElementById('resultTable'), COLS, [r.data]);
+      var f = document.getElementById('dlForm'); Object.keys(r.data).forEach(function (k) { var i = f.querySelector('[name=' + k + ']'); if (i) i.value = r.data[k]; });
+      res.hidden = false;
+    }).catch(function () { msg.className = 'err'; msg.textContent = 'Network error'; });
+  });
+  document.getElementById('bulkForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    Lookup.post('/branch/bulk/start', new FormData(e.target)).then(function (r) {
+      if (!r.ok) { alert(r.error || 'Error'); return; }
+      Lookup.track(r.job_id, { root: document.getElementById('prog'), fill: document.getElementById('pfill'), text: document.getElementById('ptext'),
+        stop: document.getElementById('pstop'), download: document.getElementById('pdl'), counters: { success: 'Success', errors: 'Errors' } });
+    });
+  });
+  if (location.hash === '#bulk') pane('bulk');
+})();
+</script>{% endblock %}

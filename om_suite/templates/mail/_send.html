@@ -1,0 +1,15 @@
+{# send controls: kind = region|full, n = number of mails ready #}
+<form class="card send-box" data-kind="{{ kind }}" method="post" action="{{ url_for('mail.send') }}" data-busy="Mails bhej rahe hain… (SMTP me kuch minute lag sakte hain)">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="{{ kind }}">
+  <h3 style="margin-bottom:.7rem">Send</h3>
+  <div class="method">
+    <label class="check"><input type="radio" name="method" value="tb" {{ 'checked' if method != 'smtp' }}> Thunderbird (extension bridge)</label>
+    <label class="check"><input type="radio" name="method" value="smtp" {{ 'checked' if method == 'smtp' }} {{ 'disabled' if not smtp_ok }}> SMTP server{% if not smtp_ok %} <span class="muted small">(<a href="{{ url_for('main.settings') }}">Settings</a> me SMTP save karein)</span>{% endif %}</label>
+  </div>
+  <label class="field" style="max-width:420px">Thunderbird identity email <span class="muted small">(optional - khali = default account)</span><input type="email" name="identity" autocomplete="off"></label>
+  <label class="check"><input type="checkbox" name="test" value="1" checked id="testOn_{{ kind }}"> 🧪 <b>Test mode</b> — saari mails sirf ek test address par jaayein (asli recipients ko nahi)</label>
+  <label class="field" style="max-width:420px" id="testBox_{{ kind }}">Test address<input type="email" name="test_to" value="{{ default_test_to }}"></label>
+  <label class="check"><input type="checkbox" name="confirm" value="1" id="confirm_{{ kind }}"> Preview dekh liya — <b>{{ n }}</b> mail(s) bhejni hain <span id="target_{{ kind }}">(TEST address par)</span></label>
+  <button class="btn" type="submit" id="sendBtn_{{ kind }}" disabled>🚀 {{ 'Send full DBP report' if kind == 'full' else 'Send all now' }}</button>
+  <p class="muted small" style="margin:.6rem 0 0">Test mode band karoge to mails <b>asli recipients</b> ko jayengi. Pehle test mode me ek baar bhej ke dekh lein.</p>
+</form>

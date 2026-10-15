@@ -1,0 +1,39 @@
+{% from "_icons.html" import logo %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
+<meta name="theme-color" content="#2563EB">
+<link rel="manifest" href="{{ url_for('main.manifest') }}">
+<link rel="icon" href="{{ asset('img/favicon.svg') }}" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/tokens.css') }}">
+<link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body class="auth">
+<div class="auth-wrap">
+  <section class="auth-side">
+    <div class="brand" style="color:#fff">{{ logo() }}<span><b>{{ app_name }}</b></span></div>
+    <div>
+      <h2>Saare OM Logistics reports aur tools, ek hi jagah.</h2>
+      <p>Ek login, ek jaisa design, har device par.</p>
+      <ul><li>Paid / ToPay month-wise reports</li><li>DBP reports aur branch-wise mails</li><li>CN, GST, Party aur Branch lookup</li><li>Admin approval + per-user tool access</li></ul>
+    </div>
+    <small style="color:#CFE0FF">© OM Logistics</small>
+  </section>
+  <section class="auth-main">
+    <div class="auth-card">
+      <div class="brand" style="margin-bottom:.4rem">{{ logo() }}<span><b>{{ app_name }}</b></span></div>
+      {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}
+        <div class="flash {{ cat }}" role="status">{{ msg }}</div>
+      {% endfor %}{% endwith %}
+      {% block body %}{% endblock %}
+    </div>
+  </section>
+</div>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}</script>
+</body>
+</html>

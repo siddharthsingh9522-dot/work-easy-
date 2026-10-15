@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Customer Search · {{ app_name }}{% endblock %}
+{% block page_title %}Customer Search{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('css/lookup.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Customer Search</h2><p>Customer ko naam, code, GST ya master code se dhoondho — ya Excel se bulk me.</p></div></div>
+<div class="tabs"><a class="tab active" href="#manual" data-tab="manual">Manual search</a><a class="tab" href="#bulk" data-tab="bulk">Bulk (Excel)</a></div>
+
+<div id="pane-manual" class="card">
+  <form id="searchForm"><div class="lookup-grid">
+    <label class="field">Customer name<input name="cname" maxlength="120"></label>
+    <label class="field">Customer code<input name="ccode" maxlength="40"></label>
+    <label class="field">Booking location code<input name="lcode" maxlength="40"></label>
+    <label class="field">Billing location code<input name="blcode" maxlength="40"></label>
+    <label class="field">Master code<input name="mcode" maxlength="40"></label>
+    <label class="field">GST number<input name="custgst" maxlength="20"></label>
+  </div><button class="btn" type="submit">Search</button></form>
+  <div id="msg" class="muted" style="margin-top:.7rem"></div>
+  <div id="results" class="table-wrap" style="margin-top:.7rem"></div>
+</div>
+
+<div id="pane-bulk" class="card" hidden>
+  <p class="muted" style="margin-top:0">Excel me <b>customer / billing-location codes</b> ka column (header ya bina header). Har code ek-ek karke search hota hai — kuch minute lag sakte hain.</p>
+  <form id="bulkForm" class="form-row"><label class="field grow2">Excel file (.xlsx)<input type="file" name="file" accept=".xlsx,.xlsm" required></label>
+    <div class="field"><button class="btn" type="submit">Upload & start</button></div></form>
+  <div id="prog" hidden><div class="pbar"><i id="pfill" style="width:0"></i></div><p id="ptext" class="muted small" style="margin:.2rem 0"></p>
+    <div class="row-actions"><button class="btn ghost sm" id="pstop" type="button">⛔ Stop</button><span id="pdl"></span></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/lookup.js') }}"></script><script>
+(function () {
+  function pane(n) { document.getElementById('pane-manual').hidden = n !== 'manual'; document.getElementById('pane-bulk').hidden = n !== 'bulk';
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-tab') === n); }); }
+  document.querySelectorAll('.tab').forEach(function (t) { t.addEventListener('click', function (e) { e.preventDefault(); pane(t.getAttribute('data-tab')); }); });
+  document.getElementById('searchForm').addEventListener('submit', function (e) {
+    e.preventDefault(); var msg = document.getElementById('msg'), out = document.getElementById('results'), body = {};
+    new FormData(e.target).forEach(function (v, k) { body[k] = v; });
+    msg.className = 'muted'; msg.textContent = 'Searching…'; out.innerHTML = '';
+    Lookup.post('/customer/api/manual-search', body, true).then(function (r) {
+      if (!r.ok) { msg.className = 'err'; msg.textContent = r.error || 'Error'; return; }
+      msg.textContent = r.rows.length ? r.rows.length + ' result(s)' : 'Koi customer nahi mila.';
+      if (r.rows.length) Lookup.table(out, r.columns, r.rows);
+    }).catch(function () { msg.className = 'err'; msg.textContent = 'Network error'; });
+  });
+  document.getElementById('bulkForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    Lookup.post('/customer/api/bulk-search/start', new FormData(e.target)).then(function (r) {
+      if (!r.ok) { alert(r.error || 'Error'); return; }
+      Lookup.track(r.job_id, { root: document.getElementById('prog'), fill: document.getElementById('pfill'), text: document.getElementById('ptext'),
+        stop: document.getElementById('pstop'), download: document.getElementById('pdl'), counters: { found: 'Found', not_found: 'Not found' } });
+    });
+  });
+  if (location.hash === '#bulk') pane('bulk');
+})();
+</script>{% endblock %}
