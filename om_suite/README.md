@@ -97,6 +97,10 @@ Docker image me Chromium bhi hai (GST Query ke liye, Phase 3). Free plan ki RAM 
 * Naya module `previous_mail` hai: purane users ko admin *Users & Access* me tick karna hoga.
 * TBB-only / Bill-only users bhi Thunderbird setup page use kar sakte hain (bridge sab mail tools ke liye ek hi hai).
 
+## ADR / NET Billing Suite (`/billing/`)
+Teen HTML tools (ADR NET Query, Branch-wise Data, Region Creation) ka audited, merged version - bugs aur fixes `docs/BILLING_SUITE_AUDIT.md` me. Poora kaam browser me (`static/modules/billing/`); server par kuch process/save nahi hota.
+Dev tests: `npm install` (sirf pehli baar, repo root me) phir `pytest` - Node tests IST aur New York time zone me chalte hain; node na ho to wo tests skip ho jate hain.
+
 ## Jaan lena zaroori
 
 * **OmInsights fetch (Paid/ToPay):** ab local `ominsights_proxy.py` ki zarurat nahi. Har user **Settings -> OmInsights login** me apna username/password ek baar save karta hai (login verify hota hai, password encrypted store hota hai). Server uske naam se OmInsights se data laata hai. Sirf card 546 aur 967 allowed hain (`OMINSIGHTS_ALLOWED_CARDS`) - ye open proxy nahi hai. **Zaroori:** OmInsights ko Render ka server khud reach kar pana chahiye. Agar wo sirf office network/VPN par khulta hai to ye buttons Render par kaam nahi karenge (Settings me "verify nahi hua" warning aayegi).

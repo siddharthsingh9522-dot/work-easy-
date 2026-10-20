@@ -1,0 +1,45 @@
+/* ADR / NET Billing Suite - on the shared design tokens (scoped to #bsuite) */
+#bsuite .bs-card{margin-bottom:1rem}
+#bsuite h3{font-size:1.02rem;margin:0 0 .7rem}
+#bsuite h4{margin:1.1rem 0 .4rem;font-size:.92rem;color:var(--ink-soft)}
+#bsuite .bs-tabs{margin-bottom:1.1rem}
+#bsuite .tab{cursor:pointer;font:inherit;font-size:.88rem;font-weight:600}
+#bsuite .bs-drop{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:1.5rem 1rem;border:2px dashed var(--border);border-radius:var(--radius);background:var(--surface-2);cursor:pointer;text-align:center;transition:border-color .12s,background .12s}
+#bsuite .bs-drop:hover,#bsuite .bs-drop.over{border-color:var(--accent);background:var(--accent-soft)}
+#bsuite .bs-drop-ico{font-size:1.5rem;color:var(--accent)}
+#bsuite .bs-file{display:none}
+#bsuite .bs-chip{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;padding:.5rem .7rem;margin:.5rem 0;border:1px solid var(--border);border-radius:9px;background:var(--surface-2)}
+#bsuite .bs-chip b{word-break:break-all}
+#bsuite .bs-inline{display:inline-flex;align-items:center;gap:.4rem;margin-left:auto;font-size:.85rem}
+#bsuite .bs-note{padding:.5rem .75rem;border-radius:8px;margin:.5rem 0;font-size:.88rem;border:1px solid}
+#bsuite .bs-note.ok{background:var(--success-soft);color:var(--success);border-color:#BFE6CD}
+#bsuite .bs-note.bad{background:var(--danger-soft);color:var(--danger);border-color:#F4C6C2}
+#bsuite .bs-note.warn{background:var(--warn-soft);color:var(--warn);border-color:#F6DE95}
+#bsuite .bs-note.info{background:var(--accent-soft);color:var(--accent-strong);border-color:#C9D9FB}
+#bsuite .bs-maps{display:grid;gap:.7rem 1rem;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+#bsuite .bs-field{display:flex;flex-direction:column;gap:.25rem;font-size:.82rem;font-weight:600;color:var(--ink-soft)}
+#bsuite .bs-field.bad span{color:var(--danger)}
+#bsuite .bs-field .input,#bsuite .bs-sel{width:100%;margin:0;padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-weight:400}
+#bsuite .bs-field.bad .input{border-color:var(--danger)}
+#bsuite .bs-adv{margin:.5rem 0;border:1px solid var(--border);border-radius:9px;padding:.4rem .7rem}
+#bsuite .bs-adv summary{cursor:pointer;font-weight:600;font-size:.88rem;color:var(--accent)}
+#bsuite .bs-adv .bs-field{margin-top:.5rem}
+#bsuite .bs-chips{display:flex;gap:.45rem;flex-wrap:wrap}
+#bsuite .bs-mode{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .65rem;border:1px solid var(--border);border-radius:999px;background:var(--surface);cursor:pointer;font-size:.85rem}
+#bsuite .bs-mode.on{background:var(--danger-soft);border-color:#F4C6C2}
+#bsuite .bs-add{display:flex;gap:.5rem;margin-top:.6rem;max-width:420px}#bsuite .bs-add .input{margin:0}
+#bsuite .bs-check{display:flex;align-items:center;gap:.5rem;margin:.35rem 0;font-size:.88rem}
+#bsuite .bs-checks{display:flex;gap:1.4rem;flex-wrap:wrap;margin:.4rem 0}
+#bsuite .bs-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.9rem 0}
+#bsuite .bs-stats{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+#bsuite .bs-stat{padding:.7rem .9rem;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+#bsuite .bs-stat-v{font-family:var(--font-head);font-size:1.5rem;font-weight:700}
+#bsuite .bs-stat-l{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+#bsuite .bs-stat.ok .bs-stat-v{color:var(--success)}#bsuite .bs-stat.bad .bs-stat-v{color:var(--danger)}
+#bsuite .bs-pipe{display:flex;gap:.4rem;flex-wrap:wrap;margin:.8rem 0}
+#bsuite .bs-step{display:flex;flex-direction:column;align-items:center;min-width:84px;padding:.4rem .6rem;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:.75rem;color:var(--ink-soft)}
+#bsuite .bs-step b{font-size:.95rem;color:var(--ink)}
+#bsuite .bs-warn-group{margin:.4rem 0;border:1px solid var(--border);border-radius:9px;padding:.35rem .7rem;background:var(--surface)}
+#bsuite .bs-warn-group summary{cursor:pointer;font-weight:600;font-size:.88rem}
+#bsuite .bs-warn{font-size:.84rem;color:var(--ink-soft);padding:.25rem 0;border-top:1px dashed var(--border);word-break:break-word}
+#bsuite .bs-preview{max-height:55vh}

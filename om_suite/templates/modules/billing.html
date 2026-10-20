@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}ADR / NET Billing Suite · {{ app_name }}{% endblock %}
+{% block page_title %}ADR / NET Billing Suite{% endblock %}
+{% block head %}{% include "dbp/_head.html" %}<link rel="stylesheet" href="{{ asset('modules/billing/billing.css') }}">{% endblock %}
+{% block content %}<div id="bsuite"><p class="muted">Loading…</p></div>{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{{ asset('modules/billing/core.js') }}"></script>
+<script src="{{ asset('modules/billing/app.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,7 @@
+{
+  "name": "om-suite-js-tests",
+  "private": true,
+  "description": "Dev-only: lets the Node tests of static/modules/billing/core.js load SheetJS (the browser loads it from a CDN).",
+  "scripts": { "test": "node --test tests/js/*.test.js" },
+  "devDependencies": { "xlsx": "0.18.5", "jsdom": "^24.0.0" }
+}

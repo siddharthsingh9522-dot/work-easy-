@@ -4,6 +4,7 @@
 
 | Purana project / tool | Naya app me | URL |
 |---|---|---|
+| ADR_NET_QUERY + BRANCH_WISE_DATA_CREATION + REGION_CREATION (3 HTML tools) | **ADR / NET Billing Suite** - audited (`docs/BILLING_SUITE_AUDIT.md`) | `/billing/` |
 | working-paid-topay (Netlify, `index.html`) | **Paid / ToPay Suite** (7 modes + CN Query + OmInsights fetch) | `/paid-topay/` |
 | DBP-REPORT (Streamlit) → Report Builder | **DBP Report Builder** | `/dbp/report` |
 | … Month-wise Summary (ADR / NET / Full Region) | **Month-wise Summary** | `/dbp/month` |
@@ -77,6 +78,6 @@ app.py, wsgi.py        app factory / gunicorn      core/        config, store(Fi
 blueprints/            har tool ka web layer       dbp/         DBP pandas engine + masters + mail planning
 mailflows/             TBB / Bill / Previous engine omauto/      OM Automation (CN/GST/Party/Master) engine
 templates/, static/    shell + tools UI            thunderbird_extension/   merged extension v2.0.0
-tests/                 201 tests                   Dockerfile, render.yaml
+tests/                 206 pytest tests (+34 JS tests that pytest runs)                   Dockerfile, render.yaml
 ```
 Naya tool jodne ke liye: `core/modules.py` me entry + ek blueprint + template.

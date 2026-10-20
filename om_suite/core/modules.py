@@ -20,6 +20,12 @@ PTP_MODES = [
     ("cnquery", "CN Query Tool"),
 ]
 
+BILLING_MODES = [
+    ("query", "1. ADR / NET Query"),
+    ("branch", "2. Branch-wise Data"),
+    ("region", "3. Region Creation"),
+]
+
 OM_MODES = [
     ("home", "Overview"),
     ("cn", "CN Query"),
@@ -33,6 +39,9 @@ MODULES = [
          endpoint="paid_topay.index",
          desc="Month-wise B.CODE report, ToPay/Paid report generators, region split, auto mail aur CN query.",
          children=PTP_MODES),
+    dict(id="adr_net_suite", name="ADR / NET Billing Suite", icon="calendar", group="Reports", status="live", endpoint="billing.index",
+         desc="LR export se ADR / Remaining LR, branch-wise sheets aur region workbook (month-wise SUMMARY) - audited, files browser me hi process hoti hain.",
+         children=BILLING_MODES),
     dict(id="dbp_report", name="DBP Report Builder", icon="file", group="Reports", status="live", endpoint="dbp.report",
          desc="Excel exports upload karo, branch-wise DBP report (SUMMARY, PAID, TO PAY, PENDING BILLING, DDR...) banao."),
     dict(id="month_summary", name="Month-wise Summary", icon="calendar", group="Reports", status="live", endpoint="dbp.month",

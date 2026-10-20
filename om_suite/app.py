@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from blueprints import admin as admin_bp
 from blueprints import bridge_api as bridge_api_bp
+from blueprints import billing as billing_bp
 from blueprints import branch as branch_bp
 from blueprints import customer as customer_bp
 from blueprints import dbp as dbp_bp
@@ -26,7 +27,7 @@ from core.store import build_store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-BLUEPRINT_TO_MODULE = {"paid_topay": "paid_topay", "admin": "admin_users", "mail": "mail_center"}
+BLUEPRINT_TO_MODULE = {"paid_topay": "paid_topay", "billing": "adr_net_suite", "admin": "admin_users", "mail": "mail_center"}
 
 
 def create_app(config_overrides=None, store=None):
@@ -75,6 +76,7 @@ def create_app(config_overrides=None, store=None):
     app.register_blueprint(mail_bp.bp)
     app.register_blueprint(flows_bp.bp)
     app.register_blueprint(branch_bp.bp)
+    app.register_blueprint(billing_bp.bp)
     app.register_blueprint(customer_bp.bp)
     app.register_blueprint(om_bp.bp)
     app.register_blueprint(jobs_bp.bp)
