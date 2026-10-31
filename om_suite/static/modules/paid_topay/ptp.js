@@ -1,4 +1,3 @@
-
 (function(){
   'use strict';
 
@@ -1057,9 +1056,267 @@
     });
   }
 
+  /* ---------- Auto Mail: send through the Thunderbird extension (mail is queued on the server) ---------- */
+  var PTP_MAIL_BASE = '/paid-topay/mail';
+  var tbBatch = '';
+  var tbPollTimer = null;
+  var tbPollCount = 0;
+  var tbBusy = false;
+  var tbButtons = [];   // the per-region "Send via Thunderbird" buttons of the current render
+
+  function tbEl(id){ return document.getElementById(id); }
+
+  function tbJson(res){
+    return res.text().then(function(txt){
+      var data = null;
+      try{ data = JSON.parse(txt); }catch(e){ data = null; }
+      if (!data) throw new Error('Login expire ho gaya ya server ne unexpected jawab diya - page refresh karke dobara try karein.');
+      if (!res.ok) throw new Error(data.error || ('Server error (' + res.status + ').'));
+      return data;
+    });
+  }
+
+  function tbShowError(msg){
+    var box = tbEl('automailPageError');
+    if (!box) return;
+    box.textContent = msg || '';
+    box.hidden = !msg;
+  }
+
+  function tbRefreshStatus(){
+    var el = tbEl('automailBridgeStatus');
+    if (!el) return;
+    fetch(PTP_MAIL_BASE + '/bridge-status', { credentials: 'same-origin' }).then(tbJson).then(function(d){
+      var testInput = tbEl('automailTestTo');
+      if (testInput && !testInput.value && d.me) testInput.value = d.me;
+      var setup = ' <a href="' + d.setup_url + '" target="_blank" rel="noopener">Thunderbird setup</a>';
+      var again = ' · <button type="button" class="link-btn" data-recheck="1">dobara check karein</button>';
+      if (d.connected){
+        el.innerHTML = '<strong>Thunderbird extension: connected</strong> (' + Number(d.ago) + ' sec pehle active).' + again;
+      } else if (d.ago !== null && d.ago !== undefined){
+        el.innerHTML = 'Thunderbird extension pichli baar ' + Math.max(1, Math.round(Number(d.ago) / 60)) + ' min pehle dikha - Thunderbird khula hai?' + setup + again;
+      } else {
+        el.innerHTML = 'Thunderbird extension abhi connect nahi hua - ek baar setup karein:' + setup + '.' + again;
+      }
+    }).catch(function(e){
+      el.textContent = 'Thunderbird status check nahi ho paya: ' + e.message;
+    });
+  }
+
+  function tbRegionBlob(entry){
+    // Same workbook the "Download report (.xlsx)" button saves, so the attachment matches it exactly.
+    var rows = getRegionReportRows(entry.region) || [];
+    var ws = XLSX.utils.aoa_to_sheet([TOPAY_GEN_OUTPUT_HEADERS].concat(rows));
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    return new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  function tbRegionCanSend(entry){
+    var rows = getRegionReportRows(entry.region);
+    return !!(rows && rows.length && regionRecipientEmails(entry).length);
+  }
+
+  function tbSpec(entry, index, alwaysCc){
+    var to = regionRecipientEmails(entry);
+    var inTo = {};
+    to.forEach(function(e){ inTo[e.toLowerCase()] = true; });
+    return {
+      region: entry.region,
+      to: to,
+      cc: alwaysCc.filter(function(e){ return !inTo[e.toLowerCase()]; }),
+      subject: fillTemplate(AUTOMAIL_SUBJECT_TEMPLATE, entry.region),
+      body: fillTemplate(AUTOMAIL_BODY_TEMPLATE, entry.region),
+      attachment: 'att' + index,
+      attachment_name: sanitizeFilename(entry.region) + '_ToPay_Unbilled.xlsx'
+    };
+  }
+
+  function tbSetBusy(on, activeBtn){
+    tbBusy = on;
+    var all = tbButtons.concat([tbEl('automailSendAllBtn')]);
+    all.forEach(function(b){
+      if (!b) return;
+      b.disabled = on ? true : !!b._tbBaseDisabled;
+      var sp = b.querySelector('span');
+      if (sp && b === activeBtn) sp.textContent = on ? 'Queue ho rahi hai…' : b._tbLabel;
+    });
+  }
+
+  function tbRegisterBtn(btn, baseDisabled){
+    btn._tbBaseDisabled = !!baseDisabled;
+    btn._tbLabel = btn.querySelector('span').textContent;
+    btn.disabled = !!baseDisabled;
+  }
+
+  function tbUpdateSendAll(regions){
+    var btn = tbEl('automailSendAllBtn');
+    if (!btn) return;
+    var n = regions.filter(tbRegionCanSend).length;
+    btn.querySelector('span').textContent = 'Send all regions via Thunderbird (' + n + ')';
+    btn._tbLabel = btn.querySelector('span').textContent;
+    btn._tbBaseDisabled = !n;
+    btn.disabled = !n || tbBusy;
+    btn.title = n ? '' : 'Pehle "Generate ToPay Report" chalayein - report rows chahiye.';
+  }
+
+  function tbSendRegions(entries, activeBtn){
+    if (tbBusy) return;
+    tbShowError('');
+    var testOn = tbEl('automailTestMode').checked;
+    var testTo = tbEl('automailTestTo').value.trim();
+    var identity = tbEl('automailIdentity').value.trim();
+    var alwaysCc = tbEl('automailAlwaysCc').value.split(/[;,\s]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+
+    var ready = entries.filter(tbRegionCanSend);
+    var skipped = entries.filter(function(e){ return !tbRegionCanSend(e); }).map(function(e){ return e.region; });
+    if (!ready.length){
+      tbShowError('Bhejne layak koi region nahi mila. Pehle "Generate ToPay Report" chalayein (report rows chahiye) aur directory file me recipients hone chahiye.');
+      return;
+    }
+    if (testOn && !testTo){
+      tbShowError('Test mode me test address bharna zaroori hai (ya Test mode band karein).');
+      return;
+    }
+    if (!testOn){
+      var people = ready.reduce(function(s, e){ return s + regionRecipientEmails(e).length; }, 0);
+      var ok = window.confirm('Test mode band hai: ' + ready.length + ' region ki mail ASLI recipients ko jayegi (kul ' + people + ' recipient). Pakka bhejni hain?');
+      if (!ok) return;
+    }
+
+    var fd = new FormData();
+    var specs;
+    try{
+      specs = ready.map(function(entry, i){
+        var spec = tbSpec(entry, i, alwaysCc);
+        fd.append(spec.attachment, tbRegionBlob(entry), spec.attachment_name);
+        return spec;
+      });
+    }catch(err){
+      tbShowError('Report attachment nahi ban payi: ' + (err && err.message ? err.message : 'unknown error'));
+      return;
+    }
+    fd.append('meta', JSON.stringify({ mails: specs, test: testOn, test_to: testTo, identity: identity }));
+
+    tbSetBusy(true, activeBtn);
+    fetch(PTP_MAIL_BASE + '/queue', { method: 'POST', body: fd, credentials: 'same-origin' }).then(tbJson).then(function(d){
+      tbBatch = d.batch;
+      tbPollCount = 0;
+      tbRenderProgress({ rows: [], total: d.queued, done: 0, error: 0, pending: d.queued, cancelled: 0, connected: true },
+        skipped, d.test);
+      tbPoll(skipped, d.test);
+      tbRefreshStatus();
+    }).catch(function(e){
+      tbShowError(e.message);
+    }).then(function(){
+      tbSetBusy(false, activeBtn);
+    });
+  }
+
+  function tbBatchAction(action, skipped, wasTest){
+    fetch(PTP_MAIL_BASE + '/batch', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: tbBatch, action: action })
+    }).then(tbJson).then(function(){
+      tbPollCount = 0;
+      tbPoll(skipped, wasTest);
+    }).catch(function(e){ tbShowError(e.message); });
+  }
+
+  function tbRenderProgress(d, skipped, wasTest){
+    var box = tbEl('automailProgress');
+    box.hidden = false;
+    box.innerHTML = '';
+
+    var head = document.createElement('p');
+    head.className = 'file-meta';
+    head.style.marginTop = '.6rem';
+    var strong = document.createElement('strong');
+    strong.textContent = (wasTest ? 'TEST batch' : 'Batch') + ': ';
+    head.appendChild(strong);
+    head.appendChild(document.createTextNode(
+      d.total + ' mail · bheji gayi: ' + d.done + ' · fail: ' + d.error + ' · queue me: ' + d.pending +
+      (d.cancelled ? ' · cancel: ' + d.cancelled : '')));
+    box.appendChild(head);
+
+    if (skipped && skipped.length){
+      var sk = document.createElement('p');
+      sk.className = 'file-meta';
+      sk.style.marginTop = '0';
+      sk.textContent = 'Skip hue (report rows ya recipients nahi): ' + skipped.join(', ');
+      box.appendChild(sk);
+    }
+    if (d.pending > 0 && !d.connected){
+      var hint = document.createElement('p');
+      hint.className = 'file-meta';
+      hint.style.marginTop = '0';
+      hint.textContent = 'Thunderbird extension abhi connected nahi dikh raha - Thunderbird kholein. Mail queue me safe hai, extension judte hi bhej dega.';
+      box.appendChild(hint);
+    }
+
+    if (d.rows && d.rows.length){
+      var wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      var table = document.createElement('table');
+      table.className = 'report-table';
+      var thead = document.createElement('thead');
+      var htr = document.createElement('tr');
+      ['REGION', 'STATUS', 'RECIPIENTS', 'DETAIL'].forEach(function(h){
+        var th = document.createElement('th'); th.textContent = h; th.className = 'col-branch'; htr.appendChild(th);
+      });
+      thead.appendChild(htr);
+      table.appendChild(thead);
+      var tbody = document.createElement('tbody');
+      d.rows.forEach(function(r){
+        var tr = document.createElement('tr');
+        [r.branch_name || r.branch_code || '', r.status,
+         r.n_to + ' To' + (r.n_cc ? ' + ' + r.n_cc + ' Cc' : ''), r.error || ''].forEach(function(v){
+          var td = document.createElement('td'); td.className = 'col-branch'; td.textContent = v; tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      box.appendChild(wrap);
+    }
+
+    var actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;';
+    if (d.error > 0){
+      var retry = document.createElement('button');
+      retry.type = 'button'; retry.className = 'download-btn';
+      retry.innerHTML = '<span>Retry failed</span>';
+      retry.addEventListener('click', function(){ tbBatchAction('retry', skipped, wasTest); });
+      actions.appendChild(retry);
+    }
+    if (d.pending > 0){
+      var cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'download-btn';
+      cancel.innerHTML = '<span>Cancel pending</span>';
+      cancel.addEventListener('click', function(){ tbBatchAction('cancel', skipped, wasTest); });
+      actions.appendChild(cancel);
+    }
+    if (actions.childNodes.length) box.appendChild(actions);
+  }
+
+  function tbPoll(skipped, wasTest){
+    clearTimeout(tbPollTimer);
+    if (!tbBatch) return;
+    tbPollCount += 1;
+    fetch(PTP_MAIL_BASE + '/progress?batch=' + encodeURIComponent(tbBatch), { credentials: 'same-origin' }).then(tbJson).then(function(d){
+      tbRenderProgress(d, skipped, wasTest);
+      if (d.pending > 0 && tbPollCount < 300) tbPollTimer = setTimeout(function(){ tbPoll(skipped, wasTest); }, 3000);
+    }).catch(function(){
+      if (tbPollCount < 300) tbPollTimer = setTimeout(function(){ tbPoll(skipped, wasTest); }, 6000);
+    });
+  }
+
   function renderAutomailRegions(regions){
     var slot = document.getElementById('automailRegionsSlot');
     slot.innerHTML = '';
+    tbButtons = [];
     regions.forEach(function(entry){
       var section = document.createElement('section');
       section.className = 'report-card';
@@ -1114,6 +1371,16 @@
         window.open(mail.url, '_self');
       });
 
+      var sendBtn = document.createElement('button');
+      sendBtn.type = 'button';
+      sendBtn.className = 'download-btn';
+      sendBtn.innerHTML = '<span>Send via Thunderbird</span>';
+      var canSendRegion = tbRegionCanSend(entry);
+      tbRegisterBtn(sendBtn, !canSendRegion);
+      sendBtn.title = canSendRegion ? 'Report attachment ke saath mail Thunderbird extension se bhejein' : 'Pehle "Generate ToPay Report" chalayein (is region ke rows chahiye) aur recipients hone chahiye.';
+      tbButtons.push(sendBtn);
+      sendBtn.addEventListener('click', function(){ tbSendRegions([entry], sendBtn); });
+
       var reportBtn = document.createElement('button');
       reportBtn.type = 'button';
       reportBtn.className = 'download-btn';
@@ -1134,6 +1401,7 @@
       btnRow.style.cssText = 'display:flex;gap:.5rem;flex-wrap:wrap;';
       btnRow.appendChild(reportBtn);
       btnRow.appendChild(composeBtn);
+      btnRow.appendChild(sendBtn);
       btnRow.appendChild(copyBtn);
 
       head.appendChild(titleWrap);
@@ -1198,6 +1466,8 @@
       section.appendChild(wrap);
       slot.appendChild(section);
     });
+    tbUpdateSendAll(regions);
+    tbRefreshStatus();
   }
 
   function processAutomailWorkbook(workbook){
@@ -2011,6 +2281,25 @@
     }catch(e){ /* storage unavailable */ }
     nameInput.addEventListener('change', function(){ try{ localStorage.setItem('automailSenderName', nameInput.value); }catch(e){} });
     ccInput.addEventListener('change', function(){ try{ localStorage.setItem('automailAlwaysCc', ccInput.value); }catch(e){} });
+  })();
+
+  (function(){
+    var idInput = tbEl('automailIdentity');
+    var toInput = tbEl('automailTestTo');
+    try{
+      idInput.value = localStorage.getItem('automailIdentity') || '';
+      toInput.value = localStorage.getItem('automailTestTo') || '';
+    }catch(e){ /* storage unavailable */ }
+    idInput.addEventListener('change', function(){ try{ localStorage.setItem('automailIdentity', idInput.value); }catch(e){} });
+    toInput.addEventListener('change', function(){ try{ localStorage.setItem('automailTestTo', toInput.value); }catch(e){} });
+    tbEl('automailSendAllBtn').addEventListener('click', function(){
+      if (!automailState || !automailState.regions.length) return;
+      tbSendRegions(automailState.regions, tbEl('automailSendAllBtn'));
+    });
+    tbEl('automailBridgeStatus').addEventListener('click', function(e){
+      var t = e.target;
+      if (t && t.getAttribute && t.getAttribute('data-recheck')) tbRefreshStatus();
+    });
   })();
 
   /* ---------- Dashboard + sidebar + mode switch wiring ---------- */
