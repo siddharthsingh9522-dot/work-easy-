@@ -791,6 +791,8 @@
     }
 
     regionState = { headerRow: headerRow, baseName: stripExt(displayName), groups: grouped.groups };
+    reportSrcStamp.region = ++reportSrcCounter;
+    refreshAutomailIfLoaded();
     summary.textContent = grouped.groups.length + ' region' + (grouped.groups.length === 1 ? '' : 's') + ' found across ' + dataRows.length + ' records. Each region becomes its own Excel file inside the ZIP.';
     slot.appendChild(renderRegionList(grouped.groups, dataRows.length));
     card.hidden = false;
@@ -923,12 +925,42 @@
     return tpl.replace(/\{REGION\}/g, region);
   }
 
-  function getRegionReportRows(regionDisplay){
-    if (!topayGenLastResult || !topayGenLastResult.rows) return null;
+  // Report source for the per-region mail attachment. Two places can supply it:
+  //  - the file loaded in "Region-wise Report" (regionState, split by its REGION column)
+  //  - the last "Generate ToPay Report" result (topayGenLastResult)
+  // Whichever was loaded most recently wins (reportSrcStamp), and the other is a fallback.
+  var reportSrcStamp = { region: 0, topay: 0 };
+  var reportSrcCounter = 0;
+
+  function regionSourceFor(regionDisplay){
     var key = String(regionDisplay || '').trim().toUpperCase();
-    return topayGenLastResult.rows.filter(function(r){
-      return String(r[2] == null ? '' : r[2]).trim().toUpperCase() === key;
-    });
+    var found = [];
+    if (regionState && regionState.groups){
+      var g = regionState.groups.filter(function(x){ return x.key === key; })[0];
+      if (g && g.rows.length){
+        found.push({ stamp: reportSrcStamp.region, headers: regionState.headerRow, rows: g.rows, name: regionState.baseName });
+      }
+    }
+    if (topayGenLastResult && topayGenLastResult.rows){
+      var rows = topayGenLastResult.rows.filter(function(r){
+        return String(r[2] == null ? '' : r[2]).trim().toUpperCase() === key;
+      });
+      if (rows.length){
+        found.push({ stamp: reportSrcStamp.topay, headers: TOPAY_GEN_OUTPUT_HEADERS, rows: rows, name: topayGenLastSourceName });
+      }
+    }
+    found.sort(function(a, b){ return b.stamp - a.stamp; });
+    return found[0] || null;
+  }
+
+  function getRegionReportRows(regionDisplay){
+    var src = regionSourceFor(regionDisplay);
+    return src ? src.rows : null;
+  }
+
+  function getRegionReportAoa(regionDisplay){
+    var src = regionSourceFor(regionDisplay);
+    return src ? [src.headers].concat(src.rows) : [TOPAY_GEN_OUTPUT_HEADERS];
   }
 
   function buildMailtoUrl(opts){
@@ -1105,8 +1137,7 @@
 
   function tbRegionBlob(entry){
     // Same workbook the "Download report (.xlsx)" button saves, so the attachment matches it exactly.
-    var rows = getRegionReportRows(entry.region) || [];
-    var ws = XLSX.utils.aoa_to_sheet([TOPAY_GEN_OUTPUT_HEADERS].concat(rows));
+    var ws = XLSX.utils.aoa_to_sheet(getRegionReportAoa(entry.region));
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
     var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -1158,7 +1189,7 @@
     btn._tbLabel = btn.querySelector('span').textContent;
     btn._tbBaseDisabled = !n;
     btn.disabled = !n || tbBusy;
-    btn.title = n ? '' : 'Pehle "Generate ToPay Report" chalayein - report rows chahiye.';
+    btn.title = n ? '' : 'Pehle "Region-wise Report" me file load karein (ya "Generate ToPay Report" chalayein) - report rows chahiye.';
   }
 
   function tbSendRegions(entries, activeBtn){
@@ -1172,7 +1203,7 @@
     var ready = entries.filter(tbRegionCanSend);
     var skipped = entries.filter(function(e){ return !tbRegionCanSend(e); }).map(function(e){ return e.region; });
     if (!ready.length){
-      tbShowError('Bhejne layak koi region nahi mila. Pehle "Generate ToPay Report" chalayein (report rows chahiye) aur directory file me recipients hone chahiye.');
+      tbShowError('Bhejne layak koi region nahi mila. Pehle "Region-wise Report" me file load karein (ya "Generate ToPay Report" chalayein) aur directory file me recipients hone chahiye.');
       return;
     }
     if (testOn && !testTo){
@@ -1377,7 +1408,7 @@
       sendBtn.innerHTML = '<span>Send via Thunderbird</span>';
       var canSendRegion = tbRegionCanSend(entry);
       tbRegisterBtn(sendBtn, !canSendRegion);
-      sendBtn.title = canSendRegion ? 'Report attachment ke saath mail Thunderbird extension se bhejein' : 'Pehle "Generate ToPay Report" chalayein (is region ke rows chahiye) aur recipients hone chahiye.';
+      sendBtn.title = canSendRegion ? 'Report attachment ke saath mail Thunderbird extension se bhejein' : 'Pehle "Region-wise Report" me file load karein (ya "Generate ToPay Report" chalayein) - is region ke rows aur recipients chahiye.';
       tbButtons.push(sendBtn);
       sendBtn.addEventListener('click', function(){ tbSendRegions([entry], sendBtn); });
 
@@ -1388,8 +1419,7 @@
       reportBtn.innerHTML = '<span>Download report (.xlsx)</span>';
       reportBtn.disabled = !regionRows || !regionRows.length;
       reportBtn.addEventListener('click', function(){
-        var rows = getRegionReportRows(entry.region) || [];
-        var aoa = [TOPAY_GEN_OUTPUT_HEADERS].concat(rows);
+        var aoa = getRegionReportAoa(entry.region);
         downloadAoa(aoa, sanitizeFilename(entry.region) + '_ToPay_Unbilled.xlsx', reportBtn, attachFallback);
       });
 
@@ -1412,8 +1442,8 @@
       reportNote.className = 'file-meta';
       reportNote.style.marginTop = '0';
       reportNote.textContent = regionRows && regionRows.length
-        ? regionRows.length.toLocaleString() + ' report rows available for this region (from ' + (topayGenLastSourceName || 'the last generated report') + ')'
-        : 'No generated report loaded yet for this region — use "Generate ToPay Report" first, then come back here to attach it.';
+        ? regionRows.length.toLocaleString() + ' report rows available for this region (from ' + ((regionSourceFor(entry.region) || {}).name || 'the loaded report') + ')'
+        : 'No report rows for this region yet — upload the file in "Region-wise Report" (or run "Generate ToPay Report"), then come back here.';
       section.appendChild(reportNote);
       section.appendChild(attachFallback);
 
@@ -1468,6 +1498,14 @@
     });
     tbUpdateSendAll(regions);
     tbRefreshStatus();
+  }
+
+  // The Auto Mail cards were drawn from whatever report was loaded at that moment; redraw them
+  // when a report is loaded afterwards so the buttons/attachments pick up the new rows.
+  function refreshAutomailIfLoaded(){
+    if (automailState && automailState.regions && document.getElementById('automailRegionsSlot')){
+      renderAutomailRegions(automailState.regions);
+    }
   }
 
   function processAutomailWorkbook(workbook){
@@ -2924,6 +2962,8 @@
     card.hidden = false;
     topayGenLastResult = result;
     topayGenLastSourceName = sourceName || '';
+    reportSrcStamp.topay = ++reportSrcCounter;
+    refreshAutomailIfLoaded();
 
     var summary = result.kept.toLocaleString() + ' of ' + result.totalRaw.toLocaleString() + ' rows in report (none dropped)';
     var notes = [];
