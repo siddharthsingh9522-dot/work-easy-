@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "OM Suite Mail Bridge",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Sends OM Suite mail (Mail Center, Bill Mail) through your own Thunderbird account and matches historical Sent mails for recipients.",
   "browser_specific_settings": {
     "gecko": {
