@@ -408,7 +408,8 @@
         </div>
         <button type="button" class="download-btn" id="automailDownloadBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0-12l-4 4m4-4l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Download recipient list (CSV)</span></button>
       </div>
-      <div class="error-box" id="automailSendNote" style="background:var(--total-bg);color:var(--header-ink);border-color:var(--header-bg);">A browser page can't connect to an SMTP server directly (and never should embed a mail password) — so real one-click sending isn't possible here. What each region card below <em>can</em> do: download that region's report as the attachment, then open a ready-to-send draft (To/Cc/Subject/Body filled in) in your default mail app — Thunderbird if that's what you have set as default.</div>
+      <div class="error-box" id="automailSendNote" style="background:var(--total-bg);color:var(--header-ink);border-color:var(--header-bg);">Mail ab <strong>Thunderbird extension</strong> se bhi bheji ja sakti hai. Region card par <strong>Send via Thunderbird</strong> dabao (ya neeche <strong>Send all regions</strong>): us region ki report (.xlsx) attachment ke saath, To/Cc/Subject/Body bhari hui mail aapke Thunderbird ki queue me chali jaati hai aur extension use bhej deta hai. Thunderbird khula hona chahiye (extension har ~1 minute me queue check karta hai). Browser SMTP se seedha connect nahi karta, aur koi mail password page me nahi rakha jaata. <em>Compose email</em> button pehle jaisa hi default mail app me draft kholta hai.</div>
+      <p class="file-meta" id="automailBridgeStatus" style="margin:.6rem 0 0;">Thunderbird extension: check ho raha hai…</p>
       <div class="fetch-grid" style="margin-top:1rem;">
         <label class="fetch-field">Your name (for "Regards,")
           <input type="text" id="automailSenderName" placeholder="e.g. Aditya Sharma" />
@@ -417,6 +418,22 @@
           <input type="text" id="automailAlwaysCc" placeholder="name@olsc.in, name2@omlogistics.co.in" />
         </label>
       </div>
+      <div class="fetch-grid" style="margin-top:.2rem;">
+        <label class="fetch-field">Thunderbird identity email (optional)
+          <input type="email" id="automailIdentity" placeholder="khali = Thunderbird ka default account" autocomplete="off" />
+        </label>
+        <label class="fetch-field">Test address
+          <input type="email" id="automailTestTo" placeholder="test mail yahan aayegi" autocomplete="off" />
+        </label>
+      </div>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;font-size:.85rem;margin:.1rem 0 .8rem;">
+        <input type="checkbox" id="automailTestMode" checked style="margin-top:.2rem;" />
+        <span><strong>Test mode</strong> — mails sirf upar ke test address par jaayengi, asli recipients ko nahi. Asli bhejne ke liye isse untick karein.</span>
+      </label>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.4rem;">
+        <button type="button" class="download-btn" id="automailSendAllBtn"><span>Send all regions via Thunderbird</span></button>
+      </div>
+      <div id="automailProgress" hidden></div>
       <div id="automailRegionsSlot"></div>
     </section>
 
