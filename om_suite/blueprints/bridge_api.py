@@ -15,7 +15,7 @@ from core import bridge_queue as bq
 from core.auth import get_user_cached
 from core.modules import can_access
 
-MAIL_MODULES = ("mail_center", "tbb_mail", "bill_mail", "previous_mail")
+MAIL_MODULES = ("mail_center", "tbb_mail", "bill_mail", "previous_mail", "paid_topay")
 from core.store import norm_email, user_id_for
 
 bp = Blueprint("bridge_api", __name__, url_prefix="/api/bridge")
