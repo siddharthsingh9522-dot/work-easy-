@@ -288,9 +288,13 @@ async function sendJob(job) {
   const identityId = await findIdentity(p.identity_email);
   const tab = await messenger.compose.beginNew(undefined, {
     to: p.to || [], cc: p.cc || [], bcc: p.bcc || [],
-    subject: p.subject || "", plainTextBody: p.plain_text || "", body: p.html || undefined,
-    isPlainText: false,
-    deliveryFormat: "both",
+    subject: p.subject || "",
+    // Thunderbird rejects plainTextBody together with isPlainText:false unless an HTML `body` is
+    // also given. Mails with an HTML body go out as HTML (+plain alternative); plain-text-only
+    // mails (e.g. the region ToPay report) go out as plain text.
+    ...(p.html
+      ? { body: p.html, plainTextBody: p.plain_text || "", isPlainText: false, deliveryFormat: "both" }
+      : { plainTextBody: p.plain_text || "", isPlainText: true, deliveryFormat: "plaintext" }),
     ...(identityId ? { identityId } : {})
   });
   if (attachmentFile) {
