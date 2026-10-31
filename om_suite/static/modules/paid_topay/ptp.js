@@ -983,10 +983,23 @@
     return { url: full, toDropped: false, toCount: (opts.to || []).length };
   }
 
+  // One person can have two ids in a single cell, e.g. "a@olsc.in/b@olsc.in" (or separated by ; , space).
+  // Split them into separate valid addresses so the mail never goes out with one invalid "a@x/b@x" address.
+  function splitEmails(raw){
+    return String(raw == null ? '' : raw)
+      .split(/[\/;,\s|]+/)
+      .map(function(e){ return e.replace(/^[<"'()]+|[>"'()]+$/g, '').trim(); })
+      .filter(function(e){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); });
+  }
+
+  function addEmails(map, raw){
+    splitEmails(raw).forEach(function(e){ map[e.toLowerCase()] = e; });
+  }
+
   function regionRecipientEmails(entry){
     var emails = {};
-    entry.branches.forEach(function(br){ br.recipients.forEach(function(r){ if (r.email) emails[r.email.toLowerCase()] = r.email; }); });
-    entry.regionDbp.forEach(function(r){ if (r.email) emails[r.email.toLowerCase()] = r.email; });
+    entry.branches.forEach(function(br){ br.recipients.forEach(function(r){ addEmails(emails, r.email); }); });
+    entry.regionDbp.forEach(function(r){ addEmails(emails, r.email); });
     return Object.keys(emails).map(function(k){ return emails[k]; });
   }
 
@@ -1033,7 +1046,7 @@
           name: (name || '').toString().trim(),
           desig: (desig || '').toString().trim(),
           contact: r[AUTOMAIL_CONTACT_COL] == null ? '' : String(r[AUTOMAIL_CONTACT_COL]).trim(),
-          email: (r[AUTOMAIL_EMAIL_COL] || '').toString().trim()
+          email: (function(v){ var l = splitEmails(v); return l.length ? l.join(',') : v; })((r[AUTOMAIL_EMAIL_COL] || '').toString().trim())
         });
       }
     }
@@ -1372,8 +1385,8 @@
       copyBtn.innerHTML = '<span>Copy emails</span>';
       copyBtn.addEventListener('click', function(){
         var emails = {};
-        entry.branches.forEach(function(br){ br.recipients.forEach(function(r){ if (r.email) emails[r.email.toLowerCase()] = r.email; }); });
-        entry.regionDbp.forEach(function(r){ if (r.email) emails[r.email.toLowerCase()] = r.email; });
+        entry.branches.forEach(function(br){ br.recipients.forEach(function(r){ addEmails(emails, r.email); }); });
+        entry.regionDbp.forEach(function(r){ addEmails(emails, r.email); });
         var list = Object.keys(emails).map(function(k){ return emails[k]; }).join('; ');
         if (navigator.clipboard && navigator.clipboard.writeText){
           navigator.clipboard.writeText(list).then(function(){
