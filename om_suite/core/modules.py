@@ -54,6 +54,8 @@ MODULES = [
          desc="Branch-wise verified pending mails, region auto-mail aur Thunderbird/SMTP sending."),
     dict(id="tbb_mail", name="TBB Party Mail", icon="mail", group="Communication", status="live", endpoint="flows.tbb_index",
          desc="Branch-wise GR verification mail: upload TBB report, review, select, send."),
+    dict(id="ftl_mail", name="FTL Pending Mail", icon="mail", group="Communication", status="live", endpoint="flows.ftl_index",
+         desc="Branch-wise pending FTL docket mail: upload FTL report, review, select, send."),
     dict(id="bill_mail", name="Bill Generated Mail", icon="mail", group="Communication", status="live", endpoint="flows.bill_index",
          desc="Branch-wise Auto Generated Freight Bill mail."),
     dict(id="previous_mail", name="Previous Mail & Format", icon="mail", group="Communication", status="live",
