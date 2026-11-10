@@ -12,17 +12,19 @@ from core.auth import login_required, store
 from core.modules import can_access
 from dbp import mail_sender, mailcfg
 from dbp.workspace import Workspace
-from mailflows import ai, bill_parser, builders, directories, directory_parser, emailfix, previous_mail
+from mailflows import ai, bill_parser, builders, directories, directory_parser, emailfix, ftl_parser, previous_mail
 from mailflows.engine import REVIEW_OK, Flow, fingerprint
 
 bp = Blueprint("flows", __name__, url_prefix="/mail")
 
 FLOWS = {
     "tbb": dict(label="TBB Party Mail", module_id="tbb_mail", ai_label="TBB Party GR Verification", item="GR"),
+    "ftl": dict(label="FTL Pending Mail", module_id="ftl_mail", ai_label="FTL Pending Bill Mail", item="Docket"),
     "bill": dict(label="Bill Generated Mail", module_id="bill_mail", ai_label="Bill Generated Mail", item="Bill"),
     "previous": dict(label="Previous Mail & Format", module_id="previous_mail", ai_label="Previous Mail & Format", item="Row"),
 }
 EXCEL_EXT = (".xls", ".xlsx", ".xlsm")
+FTL_ROLES = ("incharge", "billing", "dbp")       # directory contacts of an FTL pending-bill mail
 MAX_SMTP = mailcfg.MAX_SMTP_BATCH
 
 
@@ -67,7 +69,7 @@ def _save_upload(f, name):
 
 
 def _summary(slug, b):
-    if slug == "tbb":
+    if slug in ("tbb", "ftl"):
         grs = b.get("grs", [])
         return len(grs), [f"{g_['cn']} · {g_['party_name']}" for g_ in grs[:3]]
     if slug == "bill":
@@ -151,7 +153,7 @@ def preview(slug):
 @bp.route("/<slug>/upload", methods=["POST"])
 @flow_view
 def upload(slug):
-    if slug not in ("tbb", "bill"):
+    if slug not in ("tbb", "bill", "ftl"):
         abort(404)
     f = request.files.get("report_file")
     if not f or not f.filename:
@@ -165,9 +167,13 @@ def upload(slug):
         flash("Directory load nahi hai - admin se Directory & Masters me upload karwayein.", "error")
         return redirect(url_for(f"flows.{slug}_index"))
     path = _save_upload(f, f"{slug}_report")
+    stats = None
     try:
         if slug == "tbb":
             branches = directory_parser.build_branches_with_email(directory_parser.parse_report(path), directory)
+        elif slug == "ftl":
+            branches, stats = ftl_parser.parse_ftl_report(path)
+            branches = directory_parser.build_branches_with_email(branches, directory, roles=FTL_ROLES)
         else:
             branches = bill_parser.parse_bill_report(path)
             for bc, b in branches.items():
@@ -181,8 +187,16 @@ def upload(slug):
         flash(f"Report padhne me dikkat: {e}", "error")
         return redirect(url_for(f"flows.{slug}_index"))
     if not branches:
-        flash("Is report me koi branch ka data nahi mila.", "error")
+        extra = (f" ({stats['other_load']} row(s) FTL nahi thi, {stats['blank_cn']} me CN blank tha)"
+                 if stats and (stats["other_load"] or stats["blank_cn"]) else "")
+        flash(("Is report me koi FTL docket nahi mila" if slug == "ftl" else "Is report me koi branch ka data nahi mila") + extra + ".",
+              "error")
         return redirect(url_for(f"flows.{slug}_index"))
+    if stats:
+        notes = [f"{n} {what}" for n, what in ((stats["other_load"], "non-FTL row(s) ignore"),
+                                               (stats["duplicates"], "duplicate docket(s) hata diye"),
+                                               (stats["blank_cn"], "row(s) bina CN ke ignore")) if n]
+        flash(f"{stats['kept']} FTL docket(s), {len(branches)} branch(es) mile." + (" " + " · ".join(notes) + "." if notes else ""), "ok")
     for b in branches.values():
         b.update(ai_status="pending", ai_reason="", cc="", bcc="")
     fps = {c: fingerprint(slug, c, b.get("email") or "", builders.fingerprint_text(slug, b, _from_name()))
@@ -397,6 +411,11 @@ def _dispatch(slug, flow, code, mail, via, test):
         if cfg is None or not cfg.is_complete():
             raise RuntimeError("SMTP settings save nahi hain - Settings me bharein, ya Thunderbird se bhejein.")
         res = mail_sender.send_batch(cfg, [mail])[0]
+        if res["status"] == "PARTIAL":            # some recipients got it: retrying would send it to them again
+            warning = res.get("error") or "Kuch recipients server ne reject kiye."
+            if not test:
+                flow.mark_sent(code, note=warning)
+            return {"status": "sent", "warning": warning}
         if res["status"] != "SENT":
             raise RuntimeError(res.get("error") or res["status"])
         if not test:
@@ -424,13 +443,20 @@ def api_send(slug, code):
     flow.set_fields(code, email=d.get("email", branch.get("email", "")), cc=d.get("cc", ""), bcc=d.get("bcc", ""))
     try:
         mail = _mail(slug, code, branch, d.get("email", branch.get("email", "")), d.get("cc", ""), d.get("bcc", ""), test_to)
-        out = _dispatch(slug, flow, code, mail, via, test)
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
+    if not test:
+        flow.refresh_from_bridge()                # a finished Thunderbird job frees / completes the row first
+        if not flow.claim_for_send(code):
+            if flow.ops().get(code, {}).get("status") == "SENT":
+                return jsonify(ok=True, status="already_sent", detail="Ye mail pehle hi bheji ja chuki hai — dobara nahi bheji jayegi.")
+            return jsonify(ok=False, error="Ye mail abhi bheji ja rahi hai (SENDING) — pehle uska result aane dein, dobara na bhejein."), 409
+    try:
+        out = _dispatch(slug, flow, code, mail, via, test)
     except Exception as e:  # noqa: BLE001
         if not test:
             flow.mark_failed(code, e)
-        return jsonify(ok=False, error=str(e)), 500
+        return jsonify(ok=False, error=str(e)), 400 if isinstance(e, ValueError) else 500
     store().add_audit(g.user["email"], f"flow:{slug}:send", f"{code} via {via}{' TEST' if test else ''}")
     return jsonify(ok=True, **out)
 
@@ -455,13 +481,18 @@ def api_send_all(slug):
                        skipped=skipped), 400
     if via == "smtp" and len(todo) > MAX_SMTP:
         return jsonify(ok=False, error=f"SMTP se ek baar me max {MAX_SMTP} mails. Thunderbird se bhejein."), 400
-    results = {"sent": 0, "queued": 0, "failed": 0, "errors": {}}
+    results = {"sent": 0, "queued": 0, "failed": 0, "errors": {}, "warnings": {}}
     for code in todo:
         b = branches[code]
         try:
             mail = _mail(slug, code, b, b.get("email", ""), b.get("cc", ""), b.get("bcc", ""), test_to)
+            if not test and not flow.claim_for_send(code):      # another click / tab is already sending this row
+                skipped.append(code)
+                continue
             out = _dispatch(slug, flow, code, mail, via, test)
             results["queued" if out["status"] == "queued_thunderbird" else "sent"] += 1
+            if out.get("warning"):
+                results["warnings"][code] = out["warning"]
         except Exception as e:  # noqa: BLE001
             results["failed"] += 1
             results["errors"][code] = str(e)
