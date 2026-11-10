@@ -2,6 +2,7 @@
 import csv
 import io
 import re
+from datetime import date
 
 from . import bill_parser, previous_mail
 
@@ -93,6 +94,54 @@ def tbb_xlsx(branch):
     return buf.getvalue()
 
 
+# ------------------------------------------------------------------ FTL pending bill mail
+FTL_OPENING = ("Dear Sir,", "Kindly check the below FTL dockets and generate the bills at the earliest.")
+FTL_CLOSING = ("If there is any issue or clarification required, please discuss the same with us so that it can be "
+               "resolved without delay.",
+               "Please treat this as a priority and confirm once the bills are generated.")
+FTL_BOLD_COLUMNS = ("BRANCH", "REGION", "PARTY NAME")      # bold (header in red) like in the report mails
+
+
+def _ftl_norm(header):
+    return re.sub(r"[^A-Z0-9]+", " ", str(header or "").upper()).strip()
+
+
+def ftl_subject(branch):
+    """FTL PENDING BILL............. GR:-<first>/<last> M/S- <party>, <party>   (same GR rule as the TBB subject)."""
+    grs = branch.get("grs", [])
+    cns = [str(gr.get("cn", "")).strip() for gr in grs if str(gr.get("cn", "")).strip()]
+    gr_part = f"{cns[0]}/{cns[-1]}" if len(cns) >= 2 else (cns[0] if cns else "")
+    names = []
+    for gr in grs:
+        pn = str(gr.get("party_name", "")).strip()
+        if pn and pn.lower() != "nan" and pn not in names:
+            names.append(pn)
+    return f"FTL PENDING BILL............. GR:-{gr_part} M/S- {', '.join(names)}"
+
+
+def ftl_text(branch, from_name=""):
+    table = "\t".join(branch.get("columns", [])) + "\n" + "\n".join("\t".join(gr.get("cells", [])) for gr in branch.get("grs", []))
+    return "\n\n".join([*FTL_OPENING, table, *FTL_CLOSING, "Regards,\n" + (from_name or "")])
+
+
+def ftl_html(branch, from_name=""):
+    cols = branch.get("columns", [])
+    bold = {i for i, c in enumerate(cols) if _ftl_norm(c) in FTL_BOLD_COLUMNS}
+    th = "background:#FFFF00;color:#000;padding:4px 8px;font-size:12px;border:1px solid #999;text-align:center;white-space:nowrap;"
+    td = "padding:4px 8px;font-size:12px;border:1px solid #999;text-align:center;white-space:nowrap;"
+    head = "".join(f'<th style="{th}{"font-weight:bold;color:#C9211E;" if i in bold else "font-weight:normal;"}">{_esc(c)}</th>'
+                   for i, c in enumerate(cols))
+    rows = "".join("<tr>" + "".join(f'<td style="{td}{"font-weight:bold;" if i in bold else ""}">{_esc(v)}</td>'
+                                    for i, v in enumerate(gr.get("cells", []))) + "</tr>" for gr in branch.get("grs", []))
+    table = (f'<div style="overflow-x:auto;margin:8px 0 12px;"><table style="border-collapse:collapse;border:1px solid #999;">'
+             f"<thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>")
+    opening = "".join(f"<p>{_esc(t)}</p>" for t in FTL_OPENING)
+    closing = "".join(f"<p>{_esc(t)}</p>" for t in FTL_CLOSING)
+    return (f"<html><body style='font-family:Arial,sans-serif;font-size:13px;'>{opening}{table}{closing}"
+            f"<p>Regards,<br>{_esc(from_name)}</p></body></html>")
+
+
+
 def _csv(columns, rows):
     buf = io.StringIO()
     w = csv.writer(buf)
@@ -109,6 +158,8 @@ def build_mail(module, code, branch, from_name=""):
         name = f"TBB_{code}_{branch.get('branch_name_sheet', '')}".replace(" ", "_") + ".xlsx"
         return dict(subject=tbb_subject(branch), body=tbb_text(branch, from_name), html_body=tbb_html(branch, from_name),
                     attachment_bytes=tbb_xlsx(branch), attachment_name=name, attachment_type=XLSX)
+    if module == "ftl":                         # dockets are in the mail body (no attachment), like the manual mails
+        return dict(subject=ftl_subject(branch), body=ftl_text(branch, from_name), html_body=ftl_html(branch, from_name))
     if module == "bill":
         att = bill_parser.build_attachment_csv(branch)
         return dict(subject=bill_parser.build_subject(branch), body=bill_parser.build_email_text(branch),
@@ -127,6 +178,9 @@ def fingerprint_text(module, branch, from_name=""):
     """What the idempotency fingerprint covers (changing the visible content makes a fresh DRAFT)."""
     if module == "tbb":
         return tbb_text(branch, from_name)
+    if module == "ftl":
+        # pending-bill mails are a daily reminder: a new day's upload is a fresh DRAFT, the same day's re-upload is not
+        return ftl_text(branch, from_name) + "\n" + date.today().isoformat()
     if module == "bill":
         return bill_parser.build_email_text(branch)
     return branch.get("subject", "") + branch.get("body", "")
