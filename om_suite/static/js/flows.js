@@ -65,7 +65,7 @@
     say('Bhej rahe hain…');
     api('/send_all', Object.assign({ items: items() }, o)).then(function (d) {
       if (!d.ok) { say(d.error || 'Error', true); return; }
-      say('Sent: ' + d.sent + ' • Thunderbird queue: ' + d.queued + ' • Failed: ' + d.failed + (d.skipped && d.skipped.length ? ' • Not reviewed/no email: ' + d.skipped.length : ''), d.failed > 0);
+      say('Sent: ' + d.sent + ' • Thunderbird queue: ' + d.queued + ' • Failed: ' + d.failed + (d.skipped && d.skipped.length ? ' • Not reviewed/no email/busy: ' + d.skipped.length : '') + (d.warnings && Object.keys(d.warnings).length ? ' • ⚠ Kuch recipients reject hue: ' + Object.keys(d.warnings).join(', ') : ''), d.failed > 0);
       return refresh();
     }).catch(function (e) { say(e.message, true); });
   };
@@ -93,7 +93,7 @@
       if (o.test && (o.test_to || '').indexOf('@') < 1) { say('Test address daalein.', true); return; }
       if (!o.test && !window.confirm(code + ': mail ASLI recipients ko bhejni hai?')) return;
       api('/send/' + encodeURIComponent(code), Object.assign({ email: em, cc: tr.querySelector('.cc').value, bcc: tr.querySelector('.bcc').value }, o)).then(function (d) {
-        say(d.ok ? (code + ': ' + (d.status === 'already_sent' ? 'pehle hi bheji ja chuki hai' : d.status)) : (code + ': ' + d.error), !d.ok); return refresh();
+        say(d.ok ? (code + ': ' + (d.status === 'already_sent' ? 'pehle hi bheji ja chuki hai' : d.status + (d.warning ? ' ⚠ ' + d.warning : ''))) : (code + ': ' + d.error), !d.ok); return refresh();
       }).catch(function (e2) { say(e2.message, true); });
     } else if (b.classList.contains('a-find')) {
       say('Thunderbird me purani mail dhoondh rahe hain… (extension ko ~1 minute lag sakta hai)');
