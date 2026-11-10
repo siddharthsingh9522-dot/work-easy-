@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-head"><div>
   <h2>{{ cfg.label }}</h2>
-  <p>{% if slug == 'tbb' %}TBB report upload karo → har branch ko uske GR ki list ke saath mail.{% elif slug == 'bill' %}Bill report upload karo → har branch ko uske generated bills ki list ke saath mail.{% else %}Purani mail ka format aur naya data sheet do → har branch/group ke liye mail banti hai.{% endif %}</p></div>
+  <p>{% if slug == 'tbb' %}TBB report upload karo → har branch ko uske GR ki list ke saath mail.{% elif slug == 'ftl' %}FTL pending report upload karo → har branch ko uske pending FTL dockets ki list ke saath mail (sirf LOAD_TYPE = FTL rows).{% elif slug == 'bill' %}Bill report upload karo → har branch ko uske generated bills ki list ke saath mail.{% else %}Purani mail ka format aur naya data sheet do → har branch/group ke liye mail banti hai.{% endif %}</p></div>
   <a class="btn ghost" href="{{ url_for('flows.history') }}">📜 Sent / queue history</a></div>
 
 {% if has %}<div class="flash ok">Pichla data loaded hai ({{ source }}). <a href="{{ url_for('flows.preview', slug=slug) }}"><b>Preview kholein →</b></a> ya naya upload karke badlein (jo mails SENT hain wo dobara nahi bheji jayengi).</div>{% endif %}
@@ -28,8 +28,8 @@
 {% else %}
 <form class="card" method="post" action="{{ url_for('flows.upload', slug=slug) }}" enctype="multipart/form-data" data-busy="Report padhi ja rahi hai…">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <label class="field">{{ 'TBB / GR report' if slug == 'tbb' else 'Bill generated report' }} (.xls / .xlsx)<input type="file" name="report_file" accept=".xls,.xlsx" required></label>
-  <p class="muted small">Recipients company directory se aate hain ({{ 'Incharge / Billing / Delivery / DBP' if slug == 'tbb' else 'Branch Manager / Incharge' }}); wahi file jo admin <i>Directory & Masters</i> me rakhta hai.</p>
+  <label class="field">{{ 'TBB / GR report' if slug == 'tbb' else ('FTL pending report' if slug == 'ftl' else 'Bill generated report') }} (.xls / .xlsx)<input type="file" name="report_file" accept=".xls,.xlsx" required></label>
+  <p class="muted small">Recipients company directory se aate hain ({{ 'Incharge / Billing / Delivery / DBP' if slug == 'tbb' else ('Incharge / Billing / DBP' if slug == 'ftl' else 'Branch Manager / Incharge') }}); wahi file jo admin <i>Directory & Masters</i> me rakhta hai.</p>
   <button class="btn" type="submit">Upload & preview →</button>
 </form>
 {% endif %}
