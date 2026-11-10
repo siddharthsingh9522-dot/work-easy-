@@ -14,6 +14,7 @@ FIXES:
 """
 
 import re
+from datetime import datetime
 import pandas as pd
 from collections import defaultdict
 
@@ -472,7 +473,7 @@ ROLE_KEYWORDS = {
 }
 
 
-def pick_branch_role_contacts(directory, branch_code):
+def pick_branch_role_contacts(directory, branch_code, roles=None):
     """
     Branch ke:
 
@@ -481,7 +482,7 @@ def pick_branch_role_contacts(directory, branch_code):
     - Delivery
     - DBP
 
-    contacts find karta hai.
+    contacts find karta hai (roles=None -> sabhi chaar; ya e.g. ('incharge', 'billing')).
 
     Duplicate emails sirf ek baar aate hain.
 
@@ -500,6 +501,9 @@ def pick_branch_role_contacts(directory, branch_code):
     seen = set()
 
     for role, keywords in ROLE_KEYWORDS.items():
+
+        if roles is not None and role not in roles:
+            continue
 
         for e in entries:
 
@@ -777,6 +781,14 @@ def _safe_cell_value(row, column):
 
     if pd.isna(value):
         return ''
+
+    # pandas turns an integer column that has a blank cell into floats:
+    # 5704261006476 -> 5704261006476.0  (wrong CN / party code in the mail)
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.strftime('%d-%m-%Y')
 
     return str(value).strip()
 
@@ -1061,7 +1073,8 @@ def parse_report(filepath, sheet_name=0):
 
 def build_branches_with_email(
     report_branches,
-    directory
+    directory,
+    roles=None
 ):
     """
     Report se bane branches mein directory contacts add karta hai.
@@ -1086,7 +1099,8 @@ def build_branches_with_email(
         role_emails, role_names = (
             pick_branch_role_contacts(
                 directory,
-                bc
+                bc,
+                roles
             )
         )
 
@@ -1102,7 +1116,11 @@ def build_branches_with_email(
 
             b['designation'] = (
                 f"{len(role_emails)} role(s): "
-                "Incharge/Billing/Delivery/DBP"
+                + "/".join(
+                    r.capitalize() if r != 'dbp' else 'DBP'
+                    for r in ROLE_KEYWORDS
+                    if roles is None or r in roles
+                )
             )
 
         # ----------------------------------------------------
