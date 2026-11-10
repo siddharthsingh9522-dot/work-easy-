@@ -14,6 +14,7 @@ from collections import defaultdict
 from core import bridge_queue as bq
 
 REVIEW_OK = ("ok", "manual_ok")
+STALE_SENDING_SECONDS = 15 * 60
 _locks = defaultdict(threading.RLock)
 
 
@@ -83,9 +84,24 @@ class Flow:
     def mark_sending(self, code, job_id=None):
         self._set(code, status="SENDING", job_id=job_id)
 
-    def mark_sent(self, code):
+    def mark_sent(self, code, note=""):
         op = self.ops().get(code, {})
-        self._set(code, status="SENT", error="", attempts=op.get("attempts", 0) + 1)
+        self._set(code, status="SENT", error=str(note)[:500], attempts=op.get("attempts", 0) + 1)
+
+    def claim_for_send(self, code):
+        """Atomically move a row to SENDING before a real send, so a double-click, a second tab or a
+        timed-out request that is retried can never send the same mail twice.
+        False -> the row is already SENDING / SENT (caller must not send)."""
+        with self.lock:
+            ops = self.ops()
+            op = ops.get(code)
+            if op is None:
+                return True                       # untracked row: nothing to guard
+            if op["status"] in ("SENDING", "SENT"):
+                return False
+            op.update(status="SENDING", job_id=None, updated=time.time())
+            self._put_ops(ops)
+            return True
 
     def mark_failed(self, code, error):
         op = self.ops().get(code, {})
@@ -105,8 +121,16 @@ class Flow:
     def refresh_from_bridge(self):
         with self.lock:
             ops = self.ops()
+            now = time.time()
+            stale = [c for c, o in ops.items() if o["status"] == "SENDING" and not o.get("job_id")
+                     and now - o.get("updated", now) > STALE_SENDING_SECONDS]
+            for code in stale:                    # SMTP send that never reported back (worker restart / timeout)
+                ops[code].update(status="FAILED", updated=now, attempts=ops[code].get("attempts", 0) + 1,
+                                 error="Send beech me ruk gaya (server restart/timeout) - Sent folder me check karke hi retry karein.")
             waiting = {c: o["job_id"] for c, o in ops.items() if o["status"] == "SENDING" and o.get("job_id")}
             if not waiting:
+                if stale:
+                    self._put_ops(ops)
                 return ops
             states = bq.job_states(self.owner, waiting.values())
             for code, job_id in waiting.items():
