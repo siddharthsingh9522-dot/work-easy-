@@ -7,6 +7,7 @@ Workflow rows + 'operations' state machine of the three mail tools, kept in the 
   send                  -> SENDING -> SENT | FAILED   retry_failed: FAILED -> QUEUED (SENT/SKIPPED untouched)
 """
 import hashlib
+import re
 import threading
 import time
 from collections import defaultdict
@@ -64,6 +65,28 @@ class Flow:
             if code in branches:
                 branches[code].update(fields)
                 self._put_branches(branches)
+
+    def bulk_set_cc(self, cc, bcc, replace=False):
+        """Put the same CC / BCC on every row that is not SENT / SENDING, in ONE locked write.
+        replace=False -> the addresses are added to what a row already has (nobody is added twice, an empty
+        field is left alone); replace=True -> every row gets exactly these (empty list = clear).
+        Returns {code: {"cc": "...", "bcc": "..."}} of the rows that were changed."""
+        with self.lock:
+            branches, ops, changed = self.branches(), self.ops(), {}
+            for code, b in branches.items():
+                if ops.get(code, {}).get("status") in ("SENT", "SENDING"):
+                    continue
+                for field, extra in (("cc", cc), ("bcc", bcc)):
+                    if not extra and not replace:
+                        continue
+                    cur = [] if replace else [a for a in re.split(r"[,;\n]+", str(b.get(field) or "")) if a.strip()]
+                    have = {a.strip().lower() for a in cur}
+                    merged = [a.strip() for a in cur] + [a for a in extra if a.lower() not in have]
+                    b[field] = ", ".join(merged)
+                changed[code] = {"cc": b.get("cc", ""), "bcc": b.get("bcc", "")}
+            if changed:
+                self._put_branches(branches)
+            return changed
 
     def confirm(self, selected_codes):
         with self.lock:
