@@ -99,6 +99,11 @@ def rows_for(slug, flow):
     return out, flow.counts(branches, ops)
 
 
+def _cc_default(slug):
+    saved = ws().blob_get(f"cc_default_{slug}") or {}
+    return {"cc": ", ".join(saved.get("cc", [])), "bcc": ", ".join(saved.get("bcc", []))}
+
+
 def _json_or_400(slug, code):
     flow = flow_for(slug)
     branch = flow.branches().get(code)
@@ -114,8 +119,10 @@ def _mail(slug, code, branch, to, cc, bcc, test_to=None):
     if test_to:
         mail.update(to_list=test_to[:1], cc_list=[], bcc_list=[], subject="[TEST] " + mail["subject"])
     else:
-        mail.update(to_list=builders.parse_recipients(to), cc_list=builders.parse_recipients(cc),
-                    bcc_list=builders.parse_recipients(bcc))
+        to_l = builders.parse_recipients(to)
+        cc_l = [a for a in builders.parse_recipients(cc) if a not in to_l]
+        bcc_l = [a for a in builders.parse_recipients(bcc) if a not in to_l and a not in cc_l]
+        mail.update(to_list=to_l, cc_list=cc_l, bcc_list=bcc_l)
         if not mail["to_list"]:
             raise ValueError("At least one valid recipient email is required.")
     return mail
@@ -146,7 +153,8 @@ def preview(slug):
         return redirect(url_for(f"flows.{slug}_index"))
     smtp_ok = mailcfg.saved(current_app.config, g.user) is not None
     return render_template("flows/preview.html", slug=slug, cfg=FLOWS[slug], rows=rows, counts=counts, ai_on=ai.enabled(),
-                           smtp_ok=smtp_ok, source=flow.source(), default_test_to=g.user["email"])
+                           smtp_ok=smtp_ok, source=flow.source(), default_test_to=g.user["email"],
+                           cc_default=_cc_default(slug))
 
 
 # ------------------------------------------------------------------ upload (TBB / Bill)
@@ -173,7 +181,7 @@ def upload(slug):
             branches = directory_parser.build_branches_with_email(directory_parser.parse_report(path), directory)
         elif slug == "ftl":
             branches, stats = ftl_parser.parse_ftl_report(path)
-            branches = directory_parser.build_branches_with_email(branches, directory, roles=FTL_ROLES)
+            branches = ftl_parser.attach_recipients(branches, directory, FTL_ROLES)
         else:
             branches = bill_parser.parse_bill_report(path)
             for bc, b in branches.items():
@@ -197,8 +205,9 @@ def upload(slug):
                                                (stats["duplicates"], "duplicate docket(s) hata diye"),
                                                (stats["blank_cn"], "row(s) bina CN ke ignore")) if n]
         flash(f"{stats['kept']} FTL docket(s), {len(branches)} branch(es) mile." + (" " + " · ".join(notes) + "." if notes else ""), "ok")
+    default = _cc_default(slug)                   # the CC / BCC the user saved for this tool (empty if none)
     for b in branches.values():
-        b.update(ai_status="pending", ai_reason="", cc="", bcc="")
+        b.update(ai_status="pending", ai_reason="", cc=default["cc"], bcc=default["bcc"])
     fps = {c: fingerprint(slug, c, b.get("email") or "", builders.fingerprint_text(slug, b, _from_name()))
            for c, b in branches.items()}
     flow_for(slug).load(branches, os.path.basename(f.filename), fps)
@@ -397,11 +406,33 @@ def api_review_all(slug):
     return jsonify(ok=True, marked=n)
 
 
+@bp.route("/<slug>/api/bulk_cc", methods=["POST"])
+@flow_view
+def api_bulk_cc(slug):
+    """One CC / BCC for every row at once (added to what a row has, or replacing it); optionally remembered as the
+    default CC / BCC of the next uploads of this tool. SENT / SENDING rows are never touched."""
+    if slug == "previous":
+        abort(404)
+    d = request.get_json(silent=True) or {}
+    try:
+        cc, bcc = builders.parse_recipients(d.get("cc", "")), builders.parse_recipients(d.get("bcc", ""))
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    replace, save = bool(d.get("replace")), bool(d.get("save_default"))
+    if not (cc or bcc or replace or save):
+        return jsonify(ok=False, error="CC ya BCC me kam se kam ek email daalein."), 400
+    changed = flow_for(slug).bulk_set_cc(cc, bcc, replace)
+    if save:
+        ws().blob_put(f"cc_default_{slug}", {"cc": cc, "bcc": bcc})
+    store().add_audit(g.user["email"], f"flow:{slug}:bulk_cc", f"{len(changed)} rows{' + saved as default' if save else ''}")
+    return jsonify(ok=True, updated=len(changed), rows=changed, saved_default=save)
+
+
 def _apply_recipients(flow, items):
     """Persist the To/CC/BCC the user typed into the table (they are part of what is sent)."""
     for code, v in (items or {}).items():
         if code in flow.branches() and isinstance(v, dict):
-            flow.set_fields(code, email=str(v.get("email", ""))[:500], cc=str(v.get("cc", ""))[:500], bcc=str(v.get("bcc", ""))[:500])
+            flow.set_fields(code, email=str(v.get("email", ""))[:3000], cc=str(v.get("cc", ""))[:3000], bcc=str(v.get("bcc", ""))[:3000])
 
 
 def _dispatch(slug, flow, code, mail, via, test):
