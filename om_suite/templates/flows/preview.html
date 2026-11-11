@@ -25,6 +25,15 @@
     <button class="btn sm" id="sendAll" type="button">🚀 Send all (queued + reviewed)</button>
     <button class="btn ghost sm" id="retry" type="button">🔁 Retry failed</button>
   </div>
+  {% if slug != 'previous' %}
+  <div class="form-row" id="bulkCc" style="align-items:flex-end;margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--line, #e5e5e5)">
+    <label class="field" style="margin:0;min-width:240px;flex:1"><span class="small muted">CC (sab rows ke liye)</span><input type="text" id="allCc" value="{{ cc_default.cc }}" placeholder="a@x.com, b@x.com"></label>
+    <label class="field" style="margin:0;min-width:240px;flex:1"><span class="small muted">BCC (sab rows ke liye)</span><input type="text" id="allBcc" value="{{ cc_default.bcc }}" placeholder="c@x.com"></label>
+    <label class="check"><input type="checkbox" id="allReplace"> Purane CC/BCC hata ke replace karo</label>
+    <label class="check"><input type="checkbox" id="allSave"> Agle uploads ke liye default rakho</label>
+    <button class="btn sm" id="applyCc" type="button">📋 Sab rows me lagao</button>
+  </div>
+  {% endif %}
   {% if not ai_on %}<p class="muted small" style="margin:.6rem 0 0">AI check configure nahi hai. Har row ko khud check karke <b>Reviewed</b> mark karein — sirf reviewed + queued rows "Send all" me jaate hain.</p>{% endif %}
   <div id="msg" class="muted small" style="margin-top:.5rem"></div>
 </div>
