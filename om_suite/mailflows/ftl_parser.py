@@ -11,8 +11,9 @@ parse_ftl_report(path) -> (branches, stats)
         "814": {
             "branch_code": "814", "branch_name_sheet": "DANKUNI KOLKATA", "region": "KOLKATA",
             "columns": ["B.CODE", "BRANCH", ...],                       # headers as written in the file
-            "grs": [{"cn": "7147163", "cn_date": "25.10.2026", "party_code": "840607",
-                     "party_name": "STEEL & METALS", "cells": ["814", "DANKUNI KOLKATA", ...]}],   # one value per column
+            "source_codes": ["508", "511"], "dest_codes": ["809", "826"],   # every Source / Destination Code of its dockets
+            "grs": [{"cn": "7147163", "cn_date": "25.10.2026", "party_code": "840607", "party_name": "STEEL & METALS",
+                     "source_code": "508", "dest_code": "809", "cells": ["814", "DANKUNI KOLKATA", ...]}],   # one value per column
         }
     }
     stats = {"rows": .., "kept": .., "other_load": .., "blank_cn": .., "duplicates": .., "no_branch": ..}
@@ -25,6 +26,7 @@ from numbers import Integral, Real
 
 import pandas as pd
 
+from . import directory_parser
 from .directory_parser import _safe_branch_code
 
 HEADER_SCAN_ROWS = 30
@@ -38,7 +40,9 @@ FIELD_HEADERS = {
     "cn_date": ["CN DATE", "GR DATE", "DOCKET DATE"],
     "party_code": ["PARTY CODE", "PARTY CD"],
     "party_name": ["PARTY NAME", "PARTY"],
-    "load_type": ["LOAD TYPE", "LOADTYPE"],
+    "load_type": ["LOAD TYPE", "LOADTYPE", "LORRY TYPE", "LORRYTYPE"],   # FTL / PART-LOAD
+    "source_code": ["SOURCE CODE", "SOURCE CD", "SRC CODE", "FROM CODE"],
+    "dest_code": ["DESTINATION CODE", "DEST CODE", "DESTINATION CD", "TO CODE"],
 }
 REQUIRED = ("branch_code", "cn")
 
@@ -107,6 +111,11 @@ def parse_ftl_report(path, sheet_name=0):
     def val(row, field):
         return cell_text(row.iloc[idx[field]]) if field in idx else ""
 
+    def code_val(row, field):                                    # branch-style code: 2112.0 / "2112 " -> "2112"
+        if field not in idx or _is_blank(row.iloc[idx[field]]):
+            return ""
+        return _safe_branch_code(row.iloc[idx[field]])
+
     for r in range(hdr + 1, len(raw)):
         row = raw.iloc[r]
         cells = [cell_text(row.iloc[i]) for i in col_ids]
@@ -130,14 +139,54 @@ def parse_ftl_report(path, sheet_name=0):
             stats["duplicates"] += 1
             continue
         seen.add((code, cn))
-        b = branches.setdefault(code, dict(branch_code=code, branch_name_sheet="", region="", columns=columns, grs=[]))
+        b = branches.setdefault(code, dict(branch_code=code, branch_name_sheet="", region="", columns=columns,
+                                           source_codes=[], dest_codes=[], grs=[]))
         b["branch_name_sheet"] = b["branch_name_sheet"] or val(row, "branch_name")
         b["region"] = b["region"] or val(row, "region")
+        src, dst = code_val(row, "source_code"), code_val(row, "dest_code")
+        for codes, c in ((b["source_codes"], src), (b["dest_codes"], dst)):
+            if c and c not in codes:
+                codes.append(c)
         b["grs"].append(dict(cn=cn, cn_date=val(row, "cn_date"), party_code=val(row, "party_code"),
-                             party_name=val(row, "party_name"), cells=cells))
+                             party_name=val(row, "party_name"), source_code=src, dest_code=dst, cells=cells))
         stats["kept"] += 1
     return branches, stats
 
 
 def _is_blank(value) -> bool:
     return value is None or (not isinstance(value, str) and pd.isna(value)) or (isinstance(value, str) and not value.strip())
+
+
+def attach_recipients(branches, directory, roles):
+    """To = the directory contacts (given roles) of B.CODE + every Source Code + every Destination Code of the branch's
+    dockets.  A code that repeats (e.g. Destination Code == B.CODE) is looked up once; a person (e-mail) that shows up
+    for more than one code is kept once.  No contact for any code -> the normal single-contact fallback of the B.CODE."""
+    for bc, b in branches.items():
+        wanted = [(bc, "B.CODE")] + [(c, f"Src {c}") for c in b.get("source_codes", [])] + [(c, f"Dest {c}") for c in b.get("dest_codes", [])]
+        seen_codes, seen_mail, emails, names, used, missing, dupes = set(), set(), [], [], [], [], 0
+        for code, label in wanted:
+            if code in seen_codes:
+                continue
+            seen_codes.add(code)
+            found_emails, found_names = directory_parser.pick_branch_role_contacts(directory, code, roles)
+            if not found_emails:
+                missing.append(code)
+                continue
+            used.append(code)
+            for email, name in zip(found_emails, found_names):
+                key = email.strip().lower()
+                if key in seen_mail:
+                    dupes += 1
+                    continue
+                seen_mail.add(key)
+                emails.append(email)
+                names.append(f"{name} [{label}]")
+        if emails:
+            note = f"{len(emails)} contact(s) · codes: {', '.join(used)}"
+            note += f" · {dupes} duplicate hataya" if dupes else ""
+            note += f" · directory me nahi: {', '.join(missing)}" if missing else ""
+            b.update(email=", ".join(emails), contact_name="; ".join(names), designation=note)
+        else:
+            email, name, desig = directory_parser.pick_branch_email(directory, bc)
+            b.update(email=email, contact_name=name, designation=desig)
+    return branches
