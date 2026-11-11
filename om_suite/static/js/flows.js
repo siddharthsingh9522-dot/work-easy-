@@ -69,6 +69,20 @@
       return refresh();
     }).catch(function (e) { say(e.message, true); });
   };
+  var applyCc = document.getElementById('applyCc');
+  if (applyCc) applyCc.onclick = function () {
+    var cc = document.getElementById('allCc').value, bcc = document.getElementById('allBcc').value;
+    var replace = document.getElementById('allReplace').checked, save = document.getElementById('allSave').checked;
+    var bad = (cc + ',' + bcc).split(/[,;\n]+/).map(function (a) { return a.trim(); }).filter(Boolean).filter(function (a) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a); });
+    if (bad.length) { say('Galat email address: ' + bad.join(', '), true); return; }
+    if (!cc.trim() && !bcc.trim() && replace && !window.confirm('CC aur BCC dono khali hain - saari rows ka CC/BCC HATA diya jayega. Pakka?')) return;
+    if (!cc.trim() && !bcc.trim() && !replace && !save) { say('CC ya BCC me kam se kam ek email daalein.', true); return; }
+    api('/bulk_cc', { cc: cc, bcc: bcc, replace: replace, save_default: save }).then(function (d) {
+      if (!d.ok) { say(d.error || 'Error', true); return; }
+      rows().forEach(function (tr) { var r = d.rows[tr.dataset.code]; if (r) { tr.querySelector('.cc').value = r.cc; tr.querySelector('.bcc').value = r.bcc; } });
+      say(d.updated + ' row(s) me CC/BCC lag gaya' + (d.saved_default ? ' - agle uploads me bhi apne aap aayega.' : '.') + ' (SENT / SENDING rows nahi badli.)');
+    }).catch(function (e) { say(e.message, true); });
+  };
   document.getElementById('retry').onclick = function () { api('/retry_failed', {}).then(function (d) { say((d.retried || []).length + ' failed row(s) dobara QUEUED.'); return refresh(); }); };
 
   // per-row actions
