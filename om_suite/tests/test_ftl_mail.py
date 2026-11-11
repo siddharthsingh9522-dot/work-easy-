@@ -208,3 +208,109 @@ def test_tbb_report_cn_has_no_dot_zero_when_the_column_has_a_blank_cell(tmp_path
     wb.save(path)
     gr = directory_parser.parse_report(str(path))["301"]["grs"][0]
     assert gr["cn"] == "5704261006476" and gr["cn_date"] == "26-09-2026"
+
+
+# ================================================================= Lorry Type = the FTL / PART-LOAD column
+LORRY_HEADERS = ["B.CODE", "BRANCH", "CN", "CN Date", "Party Code", "Party Name", "Source Code", "Destination Code", "Lorry Type"]
+
+
+def lorry_rows():
+    return [[301, "AHMEDABAD", 7147163, "25.10.2026", 840607, "STEEL & METALS", 508, 301, "FTL"],
+            [301, "AHMEDABAD", 7153900, "25.10.2026", 840607, "STEEL & METALS", 511, 1331, "PART-LOAD"],
+            [301, "AHMEDABAD", 7147162, "25.10.2026", 641194, "AIM TECHNOLOGIES PVT LTD", 508, 826, "PART-LOAD\n"],   # stray newline in the cell
+            [302, "PUNE", 5704261006500, "26.10.2026", 111, "ZETA CORP", 1012, 2105, " ftl "]]
+
+
+def test_lorry_type_column_decides_ftl_and_part_load_is_left_out(me):
+    upload(me, "ftl", LORRY_HEADERS, lorry_rows())
+    from mailflows import ftl_parser
+    page = me.get("/mail/ftl/preview").get_data(as_text=True)
+    assert "2 FTL docket(s), 2 branch(es)" in page and "2 non-FTL row(s) ignore" in page
+    m = api(me, "ftl", "mail/301", method="get").get_json()
+    assert "7147163" in m["text"] and "7153900" not in m["text"] and "7147162" not in m["text"] and "PART-LOAD" not in m["text"]
+    assert m["subject"].endswith("GR:-7147163 M/S- STEEL & METALS")
+
+
+# ================================================================= recipients = B.CODE + Source Code + Destination Code
+def test_recipients_come_from_all_three_codes_and_a_repeated_person_is_kept_once(me, monkeypatch):
+    def p(name, des, email):
+        return dict(branch_name="X", name=name, designation=des, emails=[email])
+    monkeypatch.setattr(directories, "load", lambda: {
+        "301": [p("Inch", "BRANCH INCHARGE", "inch@om.in"), p("Bill", "BILLING EXECUTIVE", "bill@om.in")],
+        "508": [p("Inch", "BRANCH INCHARGE", "INCH@om.in"), p("Src", "DBP", "src@om.in")],       # Inch again (other case) -> once
+        "1331": []})                                                                           # destination with nobody in the directory
+    rows = [[301, "AHMEDABAD", 7147163, "25.10.2026", 1, "A", 508, 301, "FTL"],                 # destination == B.CODE -> looked up once
+            [301, "AHMEDABAD", 7153900, "25.10.2026", 1, "A", 508, 1331, "FTL"]]
+    upload(me, "ftl", LORRY_HEADERS, rows)
+    page = me.get("/mail/ftl/preview").get_data(as_text=True)
+    assert 'value="inch@om.in, bill@om.in, src@om.in"' in page                                 # B.CODE people first, then source, each once
+    assert "[B.CODE]" in page and "[Src 508]" in page and "1 duplicate hataya" in page and "directory me nahi: 1331" in page
+    assert page.count("inch@om.in") == 1
+
+
+def test_a_code_that_has_nobody_falls_back_like_before(me, monkeypatch):
+    monkeypatch.setattr(directories, "load", lambda: {"301": [dict(branch_name="X", name="Inch", designation="MANAGER", emails=["m@om.in"])]})
+    upload(me, "ftl", LORRY_HEADERS, [[301, "AHMEDABAD", 1, "25.10.2026", 1, "A", 999, 998, "FTL"]])
+    assert 'value="m@om.in"' in me.get("/mail/ftl/preview").get_data(as_text=True)               # single-contact fallback of the B.CODE
+
+
+def test_a_long_recipient_list_is_never_cut_off(me):
+    ftl_upload(me)
+    long_to = ", ".join(f"person{i:02d}@omlogistics.co.in" for i in range(40))                  # ~1100 characters
+    api(me, "ftl", "send_all", {"test": True, "test_to": "me@x.com", "items": {"301": {"email": long_to, "cc": "", "bcc": ""}}})
+    assert "person39@omlogistics.co.in" in me.get("/mail/ftl/preview").get_data(as_text=True)
+
+
+# ================================================================= CC / BCC for all rows at once
+def rows_cc(c, slug="ftl"):
+    html = c.get(f"/mail/{slug}/preview").get_data(as_text=True)
+    import re
+    return {m.group(1): (m.group(2), m.group(3)) for m in re.finditer(r'<tr data-code="(\w+)">.*?class="cc" value="([^"]*)".*?class="bcc" value="([^"]*)"', html, re.S)}
+
+
+def test_bulk_cc_bcc_goes_to_every_row_adds_without_duplicates_and_can_replace(ftl):
+    api(ftl, "ftl", "bulk_cc", {"cc": "boss@om.in", "bcc": "me@om.in"})
+    assert rows_cc(ftl) == {"301": ("boss@om.in", "me@om.in"), "302": ("boss@om.in", "me@om.in")}
+    api(ftl, "ftl", "bulk_cc", {"cc": "Boss@om.in, other@om.in"})                                # boss already there; bcc untouched
+    assert rows_cc(ftl)["301"] == ("boss@om.in, other@om.in", "me@om.in")
+    api(ftl, "ftl", "bulk_cc", {"cc": "only@om.in", "bcc": "", "replace": True})
+    assert rows_cc(ftl)["302"] == ("only@om.in", "")                                              # replaced, bcc cleared
+    r = api(ftl, "ftl", "bulk_cc", {"cc": "not-an-email"})
+    assert r.status_code == 400 and "not-an-email" in r.get_json()["error"]
+    assert api(ftl, "ftl", "bulk_cc", {"cc": "", "bcc": ""}).status_code == 400                   # nothing to apply
+
+
+def test_bulk_cc_never_touches_a_row_that_is_already_sent(app, ftl):
+    info = code_of(ftl)
+    api(ftl, "ftl", "confirm", {"selected": ["301"]})
+    api(ftl, "ftl", "send/301", {"email": "inch@omlogistics.co.in", "via": "tb"})
+    extension_finishes(app, info)
+    r = api(ftl, "ftl", "bulk_cc", {"cc": "boss@om.in"}).get_json()
+    assert r["updated"] == 1 and list(r["rows"]) == ["302"]
+    assert rows_cc(ftl)["301"][0] == ""
+
+
+def test_saved_default_cc_bcc_is_filled_into_the_next_upload(ftl):
+    api(ftl, "ftl", "bulk_cc", {"cc": "boss@om.in", "bcc": "me@om.in", "save_default": True})
+    ftl_upload(ftl, rows=FTL_ROWS + [[303, "GOA", "WEST", 9000001, "27.10.2026", 5, "OMEGA", 1, "FTL"]])
+    assert rows_cc(ftl)["303"] == ("boss@om.in", "me@om.in")
+    page = ftl.get("/mail/ftl/preview").get_data(as_text=True)
+    assert 'id="allCc" value="boss@om.in"' in page                                                  # the panel remembers it too
+    api(ftl, "ftl", "bulk_cc", {"cc": "", "bcc": "", "save_default": True})                       # clear the default
+    ftl_upload(ftl, rows=FTL_ROWS + [[304, "DIU", "WEST", 9000002, "27.10.2026", 5, "OMEGA", 1, "FTL"]])
+    assert rows_cc(ftl)["304"] == ("", "")
+
+
+def test_the_bulk_panel_is_not_shown_for_previous_mail_and_the_route_is_closed(me):
+    assert api(me, "previous", "bulk_cc", {"cc": "a@b.com"}).status_code == 404
+
+
+def test_cc_and_bcc_never_repeat_an_address_that_is_already_in_to(ftl, smtp_server):
+    sink, port = smtp_server
+    save_smtp(ftl, port)
+    api(ftl, "ftl", "confirm", {"selected": ["301"]})
+    r = api(ftl, "ftl", "send/301", {"email": "inch@om.in", "cc": "inch@om.in, boss@om.in", "bcc": "boss@om.in, me@om.in", "via": "smtp"}).get_json()
+    assert r["ok"]
+    env = sink.got[0]
+    assert sorted(env.rcpt_tos) == ["boss@om.in", "inch@om.in", "me@om.in"]                        # each address exactly once
+    assert b"Cc: boss@om.in" in env.content and b"inch@om.in, boss" not in env.content
