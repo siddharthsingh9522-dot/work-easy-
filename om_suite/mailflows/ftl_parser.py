@@ -45,6 +45,13 @@ FIELD_HEADERS = {
     "dest_code": ["DESTINATION CODE", "DEST CODE", "DESTINATION CD", "TO CODE"],
 }
 REQUIRED = ("branch_code", "cn")
+LOAD_LABELS = {"ftl": "FTL", "part": "PART-LOAD", "all": "FTL / PART-LOAD"}      # upload choice -> wording of the upload messages
+
+
+def _wanted_load(load, load_filter):
+    """load = normalised Lorry Type / Load Type cell ("FTL", "PART LOAD" ...)."""
+    is_ftl, is_part = load == "FTL", load.startswith("PART")
+    return {"ftl": is_ftl, "part": is_part}.get(load_filter, is_ftl or is_part)
 
 
 def norm(header) -> str:
@@ -91,7 +98,8 @@ def _find_header(raw):
     return None, {}
 
 
-def parse_ftl_report(path, sheet_name=0):
+def parse_ftl_report(path, sheet_name=0, load_filter="all"):
+    load_filter = load_filter if load_filter in LOAD_LABELS else "all"
     try:
         # dtype=object: keep every cell as Excel stores it (no int -> float coercion of columns that have blanks)
         raw = pd.read_excel(path, sheet_name=sheet_name, header=None, dtype=object)
@@ -128,8 +136,8 @@ def parse_ftl_report(path, sheet_name=0):
         if not code:
             stats["no_branch"] += 1
             continue
-        if "load_type" in idx and norm(val(row, "load_type")) != "FTL":
-            stats["other_load"] += 1                             # only FTL dockets go into this mail
+        if "load_type" in idx and not _wanted_load(norm(val(row, "load_type")), load_filter):
+            stats["other_load"] += 1                             # not the load type chosen at upload
             continue
         cn = val(row, "cn")
         if not cn:
