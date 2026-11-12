@@ -29,6 +29,8 @@
 <form class="card" method="post" action="{{ url_for('flows.upload', slug=slug) }}" enctype="multipart/form-data" data-busy="Report padhi ja rahi hai…">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label class="field">{{ 'TBB / GR report' if slug == 'tbb' else ('FTL pending report' if slug == 'ftl' else 'Bill generated report') }} (.xls / .xlsx)<input type="file" name="report_file" accept=".xls,.xlsx" required></label>
+  {% if slug == 'ftl' %}<label class="field">Load type (report ke <i>Lorry Type</i> / <i>Load Type</i> column se)
+    <select name="load_type"><option value="all" selected>Dono — FTL + PART-LOAD</option><option value="part">Sirf PART-LOAD</option><option value="ftl">Sirf FTL</option></select></label>{% endif %}
   <p class="muted small">Recipients company directory se aate hain ({{ 'Incharge / Billing / Delivery / DBP' if slug == 'tbb' else ('Incharge / Billing / DBP' if slug == 'ftl' else 'Branch Manager / Incharge') }}); wahi file jo admin <i>Directory & Masters</i> me rakhta hai.</p>
   <button class="btn" type="submit">Upload & preview →</button>
 </form>
