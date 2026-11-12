@@ -180,7 +180,8 @@ def upload(slug):
         if slug == "tbb":
             branches = directory_parser.build_branches_with_email(directory_parser.parse_report(path), directory)
         elif slug == "ftl":
-            branches, stats = ftl_parser.parse_ftl_report(path)
+            load_filter = request.form.get("load_type", "all")
+            branches, stats = ftl_parser.parse_ftl_report(path, load_filter=load_filter)
             branches = ftl_parser.attach_recipients(branches, directory, FTL_ROLES)
         else:
             branches = bill_parser.parse_bill_report(path)
@@ -195,16 +196,18 @@ def upload(slug):
         flash(f"Report padhne me dikkat: {e}", "error")
         return redirect(url_for(f"flows.{slug}_index"))
     if not branches:
-        extra = (f" ({stats['other_load']} row(s) FTL nahi thi, {stats['blank_cn']} me CN blank tha)"
+        label = ftl_parser.LOAD_LABELS.get(request.form.get("load_type", "all"), "FTL")
+        extra = (f" ({stats['other_load']} row(s) {label} ki nahi thi, {stats['blank_cn']} me CN blank tha)"
                  if stats and (stats["other_load"] or stats["blank_cn"]) else "")
-        flash(("Is report me koi FTL docket nahi mila" if slug == "ftl" else "Is report me koi branch ka data nahi mila") + extra + ".",
+        flash((f"Is report me koi {label} docket nahi mila" if slug == "ftl" else "Is report me koi branch ka data nahi mila") + extra + ".",
               "error")
         return redirect(url_for(f"flows.{slug}_index"))
     if stats:
-        notes = [f"{n} {what}" for n, what in ((stats["other_load"], "non-FTL row(s) ignore"),
+        label = ftl_parser.LOAD_LABELS.get(request.form.get("load_type", "all"), "FTL")
+        notes = [f"{n} {what}" for n, what in ((stats["other_load"], f"row(s) {label} ki nahi thi - ignore"),
                                                (stats["duplicates"], "duplicate docket(s) hata diye"),
                                                (stats["blank_cn"], "row(s) bina CN ke ignore")) if n]
-        flash(f"{stats['kept']} FTL docket(s), {len(branches)} branch(es) mile." + (" " + " · ".join(notes) + "." if notes else ""), "ok")
+        flash(f"{stats['kept']} {label} docket(s), {len(branches)} branch(es) mile." + (" " + " · ".join(notes) + "." if notes else ""), "ok")
     default = _cc_default(slug)                   # the CC / BCC the user saved for this tool (empty if none)
     for b in branches.values():
         b.update(ai_status="pending", ai_reason="", cc=default["cc"], bcc=default["bcc"])
