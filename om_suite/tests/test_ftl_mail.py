@@ -13,7 +13,7 @@ from mailflows.engine import Flow
 from dbp.workspace import Workspace
 from test_bridge import code_of
 from test_mail_center import Sink, save_smtp, smtp_server  # noqa: F401  (fixture re-use)
-from test_mail_flows import ME, api, extension_finishes, status, upload
+from test_mail_flows import ME, api, extension_finishes, sheet, status, tok
 
 DIRECTORY = {
     "301": [dict(branch_name="AHMEDABAD", name="Inch Charge", designation="BRANCH INCHARGE", emails=["inch@omlogistics.co.in"]),
@@ -34,6 +34,13 @@ FTL_ROWS = [
 ]
 
 
+def upload_ftl(c, headers=None, rows=None, load_type="ftl"):
+    """Like the upload form: the report + the Load type choice (ftl / part / all)."""
+    return c.post("/mail/ftl/upload", data={"csrf_token": tok(c), "load_type": load_type,
+                                            "report_file": (sheet(headers or FTL_HEADERS, rows or FTL_ROWS), "report.xlsx")},
+                  content_type="multipart/form-data")
+
+
 @pytest.fixture(autouse=True)
 def directory(monkeypatch):
     monkeypatch.setattr(directories, "load", lambda: DIRECTORY)
@@ -46,12 +53,12 @@ def me(admin):
 
 @pytest.fixture()
 def ftl(me):
-    assert upload(me, "ftl", FTL_HEADERS, FTL_ROWS).status_code == 302
+    assert upload_ftl(me).status_code == 302
     return me
 
 
-def ftl_upload(c, rows=FTL_ROWS):
-    return upload(c, "ftl", FTL_HEADERS, rows)
+def ftl_upload(c, rows=FTL_ROWS, load_type="ftl"):
+    return upload_ftl(c, FTL_HEADERS, rows, load_type)
 
 
 # ================================================================= upload / recipients
@@ -67,7 +74,7 @@ def test_ftl_upload_tells_what_it_ignored(me):
     ftl_upload(me)
     page = me.get("/mail/ftl/preview").get_data(as_text=True)                   # the flash shows on the next page
     assert "6 FTL docket(s)" not in page and "4 FTL docket(s), 2 branch(es)" in page
-    assert "1 non-FTL row(s) ignore" in page and "1 duplicate docket(s)" in page and "1 row(s) bina CN" in page
+    assert "1 row(s) FTL ki nahi thi - ignore" in page and "1 duplicate docket(s)" in page and "1 row(s) bina CN" in page
 
 
 def test_ftl_headers_with_underscores_and_title_rows_are_understood(me, tmp_path):
@@ -89,7 +96,7 @@ def test_ftl_headers_with_underscores_and_title_rows_are_understood(me, tmp_path
 def test_ftl_rejects_a_report_without_ftl_dockets_or_without_cn_column(me):
     ftl_upload(me, rows=[[301, "AHMEDABAD", "WEST", 1, "25.10.2026", 1, "X", 1, "PTL"]])
     assert "koi FTL docket nahi mila" in me.get("/mail/ftl/").get_data(as_text=True)
-    upload(me, "ftl", headers=["foo", "bar"], rows=[[1, 2]])
+    upload_ftl(me, headers=["foo", "bar"], rows=[[1, 2]])
     assert "CN_CN_NO" in me.get("/mail/ftl/").get_data(as_text=True)
 
 
@@ -221,11 +228,10 @@ def lorry_rows():
             [302, "PUNE", 5704261006500, "26.10.2026", 111, "ZETA CORP", 1012, 2105, " ftl "]]
 
 
-def test_lorry_type_column_decides_ftl_and_part_load_is_left_out(me):
-    upload(me, "ftl", LORRY_HEADERS, lorry_rows())
-    from mailflows import ftl_parser
+def test_load_type_ftl_leaves_part_load_out(me):
+    upload_ftl(me, LORRY_HEADERS, lorry_rows())
     page = me.get("/mail/ftl/preview").get_data(as_text=True)
-    assert "2 FTL docket(s), 2 branch(es)" in page and "2 non-FTL row(s) ignore" in page
+    assert "2 FTL docket(s), 2 branch(es)" in page and "2 row(s) FTL ki nahi thi - ignore" in page
     m = api(me, "ftl", "mail/301", method="get").get_json()
     assert "7147163" in m["text"] and "7153900" not in m["text"] and "7147162" not in m["text"] and "PART-LOAD" not in m["text"]
     assert m["subject"].endswith("GR:-7147163 M/S- STEEL & METALS")
@@ -241,7 +247,7 @@ def test_recipients_come_from_all_three_codes_and_a_repeated_person_is_kept_once
         "1331": []})                                                                           # destination with nobody in the directory
     rows = [[301, "AHMEDABAD", 7147163, "25.10.2026", 1, "A", 508, 301, "FTL"],                 # destination == B.CODE -> looked up once
             [301, "AHMEDABAD", 7153900, "25.10.2026", 1, "A", 508, 1331, "FTL"]]
-    upload(me, "ftl", LORRY_HEADERS, rows)
+    upload_ftl(me, LORRY_HEADERS, rows)
     page = me.get("/mail/ftl/preview").get_data(as_text=True)
     assert 'value="inch@om.in, bill@om.in, src@om.in"' in page                                 # B.CODE people first, then source, each once
     assert "[B.CODE]" in page and "[Src 508]" in page and "1 duplicate hataya" in page and "directory me nahi: 1331" in page
@@ -250,7 +256,7 @@ def test_recipients_come_from_all_three_codes_and_a_repeated_person_is_kept_once
 
 def test_a_code_that_has_nobody_falls_back_like_before(me, monkeypatch):
     monkeypatch.setattr(directories, "load", lambda: {"301": [dict(branch_name="X", name="Inch", designation="MANAGER", emails=["m@om.in"])]})
-    upload(me, "ftl", LORRY_HEADERS, [[301, "AHMEDABAD", 1, "25.10.2026", 1, "A", 999, 998, "FTL"]])
+    upload_ftl(me, LORRY_HEADERS, [[301, "AHMEDABAD", 1, "25.10.2026", 1, "A", 999, 998, "FTL"]])
     assert 'value="m@om.in"' in me.get("/mail/ftl/preview").get_data(as_text=True)               # single-contact fallback of the B.CODE
 
 
@@ -314,3 +320,42 @@ def test_cc_and_bcc_never_repeat_an_address_that_is_already_in_to(ftl, smtp_serv
     env = sink.got[0]
     assert sorted(env.rcpt_tos) == ["boss@om.in", "inch@om.in", "me@om.in"]                        # each address exactly once
     assert b"Cc: boss@om.in" in env.content and b"inch@om.in, boss" not in env.content
+
+
+# ================================================================= Load type chosen at upload: FTL / PART-LOAD / both
+def test_load_type_part_load_keeps_only_part_load_but_the_mail_still_says_ftl(me):
+    upload_ftl(me, LORRY_HEADERS, lorry_rows(), load_type="part")
+    page = me.get("/mail/ftl/preview").get_data(as_text=True)
+    assert "2 PART-LOAD docket(s), 1 branch(es)" in page and "2 row(s) PART-LOAD ki nahi thi - ignore" in page
+    m = api(me, "ftl", "mail/301", method="get").get_json()
+    assert m["subject"] == "FTL PENDING BILL............. GR:-7153900/7147162 M/S- STEEL & METALS, AIM TECHNOLOGIES PVT LTD"
+    assert "Kindly check the below FTL dockets and generate the bills" in m["text"]                    # wording stays FTL
+    assert "7147163" not in m["text"] and "\tFTL" not in m["text"] and "\tPART-LOAD" in m["text"]       # the FTL docket is not in it
+    assert "Kindly check the below FTL dockets" in m["html"] and "PART-LOAD dockets" not in m["html"]
+    assert set(status(me, "ftl")["rows"]) == {"301"}                                                # PUNE only had an FTL docket
+
+
+def test_load_type_both_keeps_ftl_and_part_load_under_the_same_ftl_wording(me):
+    upload_ftl(me, LORRY_HEADERS, lorry_rows(), load_type="all")
+    m = api(me, "ftl", "mail/301", method="get").get_json()
+    assert m["subject"] == "FTL PENDING BILL............. GR:-7147163/7147162 M/S- STEEL & METALS, AIM TECHNOLOGIES PVT LTD"
+    assert "Kindly check the below FTL dockets" in m["text"] and "PART-LOAD dockets" not in m["text"]
+    assert all(c in m["text"] for c in ("7147163", "7153900", "7147162")) and "FTL" in m["text"] and "PART-LOAD" in m["text"]
+    assert set(status(me, "ftl")["rows"]) == {"301", "302"}
+
+
+def test_without_a_choice_the_upload_takes_both(me):
+    me.post("/mail/ftl/upload", data={"csrf_token": tok(me), "report_file": (sheet(LORRY_HEADERS, lorry_rows()), "r.xlsx")},
+            content_type="multipart/form-data")
+    assert api(me, "ftl", "mail/301", method="get").get_json()["subject"].startswith("FTL PENDING BILL.............")
+
+
+def test_the_load_type_choice_is_on_the_ftl_upload_page_only(me):
+    page = me.get("/mail/ftl/").get_data(as_text=True)
+    assert 'name="load_type"' in page and "Sirf PART-LOAD" in page and "Dono" in page
+    assert 'name="load_type"' not in me.get("/mail/tbb/").get_data(as_text=True)
+
+
+def test_an_empty_load_type_result_names_what_was_looked_for(me):
+    upload_ftl(me, LORRY_HEADERS, [[301, "AHMEDABAD", 1, "25.10.2026", 1, "A", 1, 2, "FTL"]], load_type="part")
+    assert "koi PART-LOAD docket nahi mila" in me.get("/mail/ftl/").get_data(as_text=True)
