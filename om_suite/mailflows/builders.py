@@ -95,7 +95,10 @@ def tbb_xlsx(branch):
 
 
 # ------------------------------------------------------------------ FTL pending bill mail
+# The mail always says "FTL" - also when PART-LOAD dockets are in it (the Lorry Type column of the table tells them apart).
 FTL_OPENING = ("Dear Sir,", "Kindly check the below FTL dockets and generate the bills at the earliest.")
+
+
 FTL_CLOSING = ("If there is any issue or clarification required, please discuss the same with us so that it can be "
                "resolved without delay.",
                "Please treat this as a priority and confirm once the bills are generated.")
