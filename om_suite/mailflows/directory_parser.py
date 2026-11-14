@@ -79,6 +79,18 @@ def _clean_email_list(raw):
     return out
 
 
+def _person_emails(entry):
+    """Every address of one directory person, in order. A cell like 'karnal@olsc.in/dhirender.sharma@olsc.in'
+    holds two (the directory parser already splits it; a '/', ',' or ';' that is still inside an item is split here too)."""
+    out = []
+    for raw in entry.get('emails') or []:
+        for part in re.split(r'[\/,;\s]+', str(raw)):
+            part = part.strip()
+            if part and '@' in part and part not in out:
+                out.append(part)
+    return out
+
+
 def _normalize_text(value):
     """
     General text normalization.
@@ -414,7 +426,7 @@ def pick_branch_email(directory, branch_code):
         )
 
         if (
-            e.get('emails')
+            _person_emails(e)
             and any(
                 k in des
                 for k in INCHARGE_KEYWORDS
@@ -422,7 +434,7 @@ def pick_branch_email(directory, branch_code):
         ):
 
             return (
-                e['emails'][0],
+                ", ".join(_person_emails(e)),
                 e.get('name'),
                 e.get('designation')
             )
@@ -433,10 +445,10 @@ def pick_branch_email(directory, branch_code):
 
     for e in entries:
 
-        if e.get('emails'):
+        if _person_emails(e):
 
             return (
-                e['emails'][0],
+                ", ".join(_person_emails(e)),
                 e.get('name'),
                 e.get('designation')
             )
@@ -515,7 +527,7 @@ def pick_branch_role_contacts(directory, branch_code, roles=None):
                 else str(des).upper()
             )
 
-            emails = e.get('emails') or []
+            emails = _person_emails(e)
 
             if (
                 emails
@@ -525,18 +537,19 @@ def pick_branch_role_contacts(directory, branch_code, roles=None):
                 )
             ):
 
-                email = emails[0]
+                # every address of the person (names stay parallel to the e-mails)
+                for email in emails:
 
-                if email not in seen:
+                    if email.lower() not in seen:
 
-                    seen.add(email)
+                        seen.add(email.lower())
 
-                    found_emails.append(email)
+                        found_emails.append(email)
 
-                    found_names.append(
-                        f"{e.get('name', '')} "
-                        f"({e.get('designation', '')})"
-                    )
+                        found_names.append(
+                            f"{e.get('name', '')} "
+                            f"({e.get('designation', '')})"
+                        )
 
                 # Is role ka first match enough
                 break
@@ -1111,7 +1124,7 @@ def build_branches_with_email(
             )
 
             b['contact_name'] = "; ".join(
-                role_names
+                dict.fromkeys(role_names)
             )
 
             b['designation'] = (
