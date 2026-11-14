@@ -79,7 +79,7 @@ class Flow:
                 for field, extra in (("cc", cc), ("bcc", bcc)):
                     if not extra and not replace:
                         continue
-                    cur = [] if replace else [a for a in re.split(r"[,;\n]+", str(b.get(field) or "")) if a.strip()]
+                    cur = [] if replace else [a for a in re.split(r"[,;/\n]+", str(b.get(field) or "")) if a.strip()]
                     have = {a.strip().lower() for a in cur}
                     merged = [a.strip() for a in cur] + [a for a in extra if a.lower() not in have]
                     b[field] = ", ".join(merged)
