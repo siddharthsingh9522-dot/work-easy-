@@ -23,9 +23,10 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def parse_recipients(value):
-    """Comma / semicolon / newline separated addresses -> lower-cased, de-duplicated list. Invalid address -> ValueError."""
+    """Comma / semicolon / slash / newline separated addresses ('a@x.in/b@x.in' = two) -> lower-cased, de-duplicated list.
+    Invalid address -> ValueError."""
     out, seen = [], set()
-    for item in re.split(r"[,;\n]+", str(value or "")):
+    for item in re.split(r"[,;/\n]+", str(value or "")):
         email = item.strip().lower()
         if not email:
             continue
