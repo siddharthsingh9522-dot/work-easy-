@@ -359,3 +359,79 @@ def test_the_load_type_choice_is_on_the_ftl_upload_page_only(me):
 def test_an_empty_load_type_result_names_what_was_looked_for(me):
     upload_ftl(me, LORRY_HEADERS, [[301, "AHMEDABAD", 1, "25.10.2026", 1, "A", 1, 2, "FTL"]], load_type="part")
     assert "koi PART-LOAD docket nahi mila" in me.get("/mail/ftl/").get_data(as_text=True)
+
+
+# ================================================================= one directory cell, two e-mails: "a@olsc.in/b@olsc.in"
+SLASH = "karnal@olsc.in/dhirender.sharma@olsc.in"
+
+
+def slash_directory():
+    from mailflows import directory_parser as dp
+    return {"301": [dict(branch_name="AHMEDABAD", name="Karnal Incharge", designation="BRANCH INCHARGE", emails=dp._clean_email_list(SLASH)),
+                    dict(branch_name="AHMEDABAD", name="Bill", designation="BILLING EXECUTIVE", emails=["bill@olsc.in"])],
+            "302": [dict(branch_name="PUNE", name="Karnal Incharge", designation="BRANCH INCHARGE", emails=["karnal@olsc.in"])]}    # same person, other branch
+
+
+def test_the_directory_file_gives_both_addresses_of_a_slash_cell(tmp_path):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "OLSC BRANCHES"
+    ws.append(["Branch Name", "Branch Code", "Employee Name", "Designation", "E-MAIL"])
+    ws.append(["KARNAL", 405, "Dhirender", "BRANCH INCHARGE", SLASH])
+    path = tmp_path / "directory.xlsx"
+    wb.save(path)
+    got = directory_parser.parse_directory(str(path))["405"][0]["emails"]
+    assert got == ["karnal@olsc.in", "dhirender.sharma@olsc.in"]
+    assert directory_parser.pick_branch_role_contacts({"405": [dict(name="D", designation="BRANCH INCHARGE", emails=got)]}, "405")[0] == got
+
+
+def test_role_and_fallback_pickers_use_every_address_of_the_person():
+    d = slash_directory()
+    emails, names = directory_parser.pick_branch_role_contacts(d, "301")
+    assert emails == ["karnal@olsc.in", "dhirender.sharma@olsc.in", "bill@olsc.in"] and len(names) == 3
+    assert directory_parser.pick_branch_email(d, "301")[0] == "karnal@olsc.in, dhirender.sharma@olsc.in"
+    one = directory_parser.pick_branch_role_contacts({"1": [dict(name="X", designation="BILLING", emails=[SLASH])]}, "1")[0]
+    assert one == ["karnal@olsc.in", "dhirender.sharma@olsc.in"]                             # even if the slash is still inside one item
+
+
+def test_tbb_and_ftl_rows_get_both_addresses_once(me, monkeypatch):
+    monkeypatch.setattr(directories, "load", slash_directory)
+    upload_ftl(me, FTL_HEADERS, [FTL_ROWS[0], [302, "PUNE", "WEST", 5704261006500, "26.10.2026", 111, "ZETA CORP", 9, "FTL"]])
+    page = me.get("/mail/ftl/preview").get_data(as_text=True)
+    assert 'value="karnal@olsc.in, dhirender.sharma@olsc.in, bill@olsc.in"' in page          # 301: both addresses of the cell + billing
+    assert 'value="karnal@olsc.in"' in page                                                   # 302: its own incharge
+    assert page.count("Karnal Incharge (BRANCH INCHARGE)") == 2                               # shown once per branch, not once per address
+    from test_mail_flows import upload as upload_tbb
+    upload_tbb(me, "tbb")
+    tbb_page = me.get("/mail/tbb/preview").get_data(as_text=True)
+    assert 'value="karnal@olsc.in, dhirender.sharma@olsc.in, bill@olsc.in"' in tbb_page
+    assert tbb_page.count("Karnal Incharge (BRANCH INCHARGE)") >= 1 and "Karnal Incharge (BRANCH INCHARGE); Karnal Incharge" not in tbb_page
+
+
+def test_typed_recipients_with_a_slash_are_two_addresses():
+    assert builders.parse_recipients(SLASH) == ["karnal@olsc.in", "dhirender.sharma@olsc.in"]
+    assert builders.parse_recipients("A@x.in/b@x.in; c@x.in,\nA@X.IN") == ["a@x.in", "b@x.in", "c@x.in"]
+    with pytest.raises(ValueError):
+        builders.parse_recipients("a@x.in/not-an-email")
+
+
+def test_a_slash_cell_is_delivered_to_both_people(ftl, smtp_server):
+    sink, port = smtp_server
+    save_smtp(ftl, port)
+    api(ftl, "ftl", "confirm", {"selected": ["301"]})
+    r = api(ftl, "ftl", "send/301", {"email": SLASH, "cc": "boss@om.in/me@om.in", "via": "smtp"}).get_json()
+    assert r["ok"] and sorted(sink.got[0].rcpt_tos) == ["boss@om.in", "dhirender.sharma@olsc.in", "karnal@olsc.in", "me@om.in"]
+
+
+def test_ai_fix_and_bulk_cc_understand_the_slash(ftl):
+    from mailflows import emailfix
+    assert emailfix.autofix("a@olsc.in/b@olsc.in", DIRECTORY)[0] == "a@olsc.in, b@olsc.in"
+    api(ftl, "ftl", "bulk_cc", {"cc": "x@om.in/y@om.in"})
+    assert rows_cc(ftl)["301"][0] == "x@om.in, y@om.in"
+    api(ftl, "ftl", "bulk_cc", {"cc": "Y@om.in/z@om.in"})                                    # y is already there -> only z is added
+    assert rows_cc(ftl)["301"][0] == "x@om.in, y@om.in, z@om.in"
+
+
+def test_paid_topay_mail_also_splits_a_slash():
+    from blueprints import paid_topay
+    assert paid_topay._clean_emails(SLASH) == (["karnal@olsc.in", "dhirender.sharma@olsc.in"], [])
