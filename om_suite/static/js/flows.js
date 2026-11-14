@@ -73,7 +73,7 @@
   if (applyCc) applyCc.onclick = function () {
     var cc = document.getElementById('allCc').value, bcc = document.getElementById('allBcc').value;
     var replace = document.getElementById('allReplace').checked, save = document.getElementById('allSave').checked;
-    var bad = (cc + ',' + bcc).split(/[,;\n]+/).map(function (a) { return a.trim(); }).filter(Boolean).filter(function (a) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a); });
+    var bad = (cc + ',' + bcc).split(/[,;\/\n]+/).map(function (a) { return a.trim(); }).filter(Boolean).filter(function (a) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a); });
     if (bad.length) { say('Galat email address: ' + bad.join(', '), true); return; }
     if (!cc.trim() && !bcc.trim() && replace && !window.confirm('CC aur BCC dono khali hain - saari rows ka CC/BCC HATA diya jayega. Pakka?')) return;
     if (!cc.trim() && !bcc.trim() && !replace && !save) { say('CC ya BCC me kam se kam ek email daalein.', true); return; }
