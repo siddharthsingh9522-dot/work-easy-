@@ -19,7 +19,8 @@ def autofix(raw_email, directory):
         return None, []
     valid = known_domains(directory)
     notes, changed, parts = [], False, []
-    for part in re.split(r"[,;\n]+", raw_email):
+    changed |= "/" in raw_email                       # 'a@x.in/b@x.in' is rewritten as 'a@x.in, b@x.in'
+    for part in re.split(r"[,;/\n]+", raw_email):
         p = part.strip()
         if not p:
             continue
