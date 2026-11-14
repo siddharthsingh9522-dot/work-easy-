@@ -193,7 +193,7 @@ def attach_recipients(branches, directory, roles):
             note = f"{len(emails)} contact(s) · codes: {', '.join(used)}"
             note += f" · {dupes} duplicate hataya" if dupes else ""
             note += f" · directory me nahi: {', '.join(missing)}" if missing else ""
-            b.update(email=", ".join(emails), contact_name="; ".join(names), designation=note)
+            b.update(email=", ".join(emails), contact_name="; ".join(dict.fromkeys(names)), designation=note)
         else:
             email, name, desig = directory_parser.pick_branch_email(directory, bc)
             b.update(email=email, contact_name=name, designation=desig)
