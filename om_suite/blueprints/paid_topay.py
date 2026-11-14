@@ -84,7 +84,7 @@ def _mail_guard():
 def _clean_emails(values):
     """-> (unique valid addresses in order, invalid strings)."""
     if isinstance(values, str):
-        values = re.split(r"[;,\s]+", values)
+        values = re.split(r"[;,/\s]+", values)
     good, bad, seen = [], [], set()
     for v in values or []:
         v = str(v).strip()
